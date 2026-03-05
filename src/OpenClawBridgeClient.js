@@ -94,12 +94,17 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   async connect() {
-    this.stopped = false;
+    // 不重置 stopped 状态，允许重连
+    if (this.stopped !== 'force') {
+      this.stopped = false;
+    }
     await this._connectOnce();
   }
 
-  async close() {
-    this.stopped = true;
+  async close(force = false) {
+    // force = true 时强制停止，不重连
+    // force = false (默认) 时允许重连
+    this.stopped = force ? 'force' : false;
     this._clearHeartbeat();
 
     for (const [requestId, waiter] of this.pending.entries()) {
@@ -289,25 +294,40 @@ export class OpenClawBridgeClient extends EventEmitter {
   async _onClose(code, reason) {
     this.connected = false;
     this._clearHeartbeat();
-    this.emit('disconnected', { code, reason });
+    this.emit('disconnected', { code, reason, reconnect: this.reconnect, stopped: this.stopped });
 
-    if (!this.reconnect || this.stopped) {
+    // 即使 stoppe 为 true，也尝试重连一次（用于监控场景）
+    // 只有明确调用 close() 且传入参数时才真正停止
+    if (this.stopped === 'force') {
       return;
     }
 
-    while (!this.stopped) {
+    // 如果不是主动停止，则自动重连
+    if (!this.reconnect) {
+      return;
+    }
+
+    // 持续重连，直到连接成功
+    while (!this.stopped || this.stopped === 'reconnect') {
       this.reconnectAttempt += 1;
       const backoff = Math.min(
-        this.reconnectBaseMs * 2 ** (this.reconnectAttempt - 1),
+        this.reconnectBaseMs * Math.min(this.reconnectAttempt, 10), // 限制指数增长，最多10次
         this.reconnectMaxMs
       );
-      this.emit('reconnecting', { attempt: this.reconnectAttempt, backoffMs: backoff });
+      this.emit('reconnecting', { attempt: this.reconnectAttempt, backoffMs: backoff, reason: 'auto' });
       await sleep(backoff);
+      
+      if (this.stopped === 'force') {
+        break;
+      }
+      
       try {
         await this._connectOnce();
+        this.emit('reconnected', { attempt: this.reconnectAttempt });
         return;
       } catch (err) {
-        this.emit('error', err);
+        this.emit('error', { message: `重连失败: ${err.message}`, attempt: this.reconnectAttempt });
+        // 继续重连，不抛出异常
       }
     }
   }
