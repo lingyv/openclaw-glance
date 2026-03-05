@@ -1,6 +1,6 @@
 # openclaw-plugin-node
 
-Node 子项目：OpenClaw 插件客户端（连接 `openclaw-bridge`）。
+智能盯盘：OpenClaw 插件客户端（连接 `openclaw-bridge`）。
 
 OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
 
@@ -28,7 +28,7 @@ npm test
 ## 运行示例
 
 ```bash
-OPENCLAW_BRIDGE_WS_BASE=ws://127.0.0.1:8005 \
+OPENCLAW_BRIDGE_WS_BASE=ws://glanceup-pre.100credit.cn \
 OPENCLAW_WS_TOKEN=your_ws_token \
 npm start
 ```
@@ -45,7 +45,7 @@ npm run start:adapter
 import { OpenClawBridgeClient } from './src/index.js';
 
 const client = new OpenClawBridgeClient({
-  baseWsUrl: 'ws://127.0.0.1:8005',
+  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>',
   enqueueIfDisconnected: true
 });
@@ -74,7 +74,7 @@ const res = await client.createWatch({
 import { OpenClawPluginAdapter } from './src/index.js';
 
 const adapter = new OpenClawPluginAdapter({
-  baseWsUrl: 'ws://127.0.0.1:8005',
+  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>'
 });
 
