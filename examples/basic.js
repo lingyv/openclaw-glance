@@ -2,7 +2,6 @@ import { OpenClawBridgeClient } from '../src/index.js';
 
 const client = new OpenClawBridgeClient({
   baseWsUrl: process.env.OPENCLAW_BRIDGE_WS_BASE || 'ws://127.0.0.1:8005',
-  userId: process.env.OPENCLAW_USER_ID || 'openclaw_user_demo',
   token: process.env.OPENCLAW_WS_TOKEN || '',
   heartbeatMs: 15000,
   requestTimeoutMs: 10000

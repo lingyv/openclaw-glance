@@ -6,8 +6,7 @@ import { OpenClawBridgeClient } from '../src/OpenClawBridgeClient.js';
 function buildClient(extra = {}) {
   return new OpenClawBridgeClient({
     baseWsUrl: 'ws://127.0.0.1:8005',
-    userId: 'u_test',
-    token: '',
+    token: 'test_token',
     requestTimeoutMs: 2000,
     heartbeatMs: 100000,
     ...extra

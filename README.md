@@ -27,7 +27,6 @@ npm test
 
 ```bash
 OPENCLAW_BRIDGE_WS_BASE=ws://127.0.0.1:8005 \
-OPENCLAW_USER_ID=openclaw_user_demo \
 OPENCLAW_WS_TOKEN=your_ws_token \
 npm start
 ```
@@ -45,8 +44,7 @@ import { OpenClawBridgeClient } from './src/index.js';
 
 const client = new OpenClawBridgeClient({
   baseWsUrl: 'ws://127.0.0.1:8005',
-  userId: 'u1',
-  token: '',
+  token: '<JWT_TOKEN>',
   enqueueIfDisconnected: true
 });
 
@@ -75,7 +73,7 @@ import { OpenClawPluginAdapter } from './src/index.js';
 
 const adapter = new OpenClawPluginAdapter({
   baseWsUrl: 'ws://127.0.0.1:8005',
-  userId: 'u1'
+  token: '<JWT_TOKEN>'
 });
 
 await adapter.start();
@@ -101,6 +99,8 @@ await adapter.submitWatchDemand({
 - `triggered`
 
 ## 说明
+
+- 先调用 bridge `POST /openclaw/token` 获取 `token`，再使用 `ws://<host>:8005/openclaw/ws?token=<TOKEN>` 建连。
 
 - 该目录建议作为独立 git 仓库管理。
 - 当前仓库已通过 `.gitignore` 排除 `openclaw-plugin-node/`。

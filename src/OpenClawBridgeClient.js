@@ -14,7 +14,6 @@ export class OpenClawBridgeClient extends EventEmitter {
     super();
     const {
       baseWsUrl,
-      userId,
       token = '',
       heartbeatMs = 15000,
       requestTimeoutMs = 10000,
@@ -27,10 +26,10 @@ export class OpenClawBridgeClient extends EventEmitter {
     } = options || {};
 
     if (!baseWsUrl) throw new Error('baseWsUrl is required');
-    if (!userId) throw new Error('userId is required');
+    if (!token) throw new Error('token is required');
 
     this.baseWsUrl = baseWsUrl.replace(/\/$/, '');
-    this.userId = userId;
+    this.userId = '';
     this.token = token;
 
     this.heartbeatMs = heartbeatMs;
@@ -53,8 +52,7 @@ export class OpenClawBridgeClient extends EventEmitter {
 
   get wsUrl() {
     const url = new URL('/openclaw/ws', this.baseWsUrl);
-    url.searchParams.set('user_id', this.userId);
-    if (this.token) url.searchParams.set('token', this.token);
+    url.searchParams.set('token', this.token);
     return url.toString();
   }
 
@@ -239,6 +237,7 @@ export class OpenClawBridgeClient extends EventEmitter {
     }
 
     if (msg.type === 'system.connected') {
+      this.userId = msg.user_id || this.userId;
       this.emit('systemConnected', msg);
       return;
     }
