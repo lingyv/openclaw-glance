@@ -48,6 +48,24 @@ npm install git+ssh://git@github.com:lingyv/openclaw-glance.git#main
 import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
 ```
 
+## 2.1 安装 Skill（可选但推荐）
+
+该插件包含 OpenClaw Skill，可实现自然语言盯盘需求（需 OpenClaw v0.4+）。
+
+```bash
+# 方式A：复制 skill 目录到 OpenClaw skills 目录
+cp -r glance-watch ~/.openclaw/skills/
+
+# 方式B：克隆仓库时同时获取 skill
+git clone git@github.com:lingyv/openclaw-glance.git
+cp -r openclaw-glance/glance-watch ~/.openclaw/skills/
+```
+
+安装后 OpenClaw 会自动加载 skill，用户可通过自然语言请求盯盘：
+- "帮我盯着比特币，超过 73000 提醒我"
+- "监控腾讯控股价格，跌到 400 以下提醒"
+- "盯一下沪深300指数"
+
 ## 3. 申请 WebSocket token
 
 向智能盯盘项目组申请 token
