@@ -102,7 +102,7 @@ await adapter.submitWatchDemand({
 
 ## 说明
 
-- 先调用 bridge `POST /openclaw/token` 获取 `token`，再使用 `ws://<host>:8005/openclaw/ws?token=<TOKEN>` 建连。
+- 先调用 bridge `POST /root-token` 获取一次性 `root-token`，再用 `X-Root-Token` 调用 `POST /openclaw/token` 获取 ws `token`，最后使用 `ws://<host>:8005/openclaw/ws?token=<TOKEN>` 建连。
 
 - 该目录建议作为独立 git 仓库管理。
 - 当前仓库已通过 `.gitignore` 排除 `openclaw-plugin-node/`。
