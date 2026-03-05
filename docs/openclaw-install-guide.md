@@ -1,6 +1,6 @@
 # OpenClaw 插件安装与使用引导
 
-本文档面向 OpenClaw 开发者，说明如何安装并接入 `openclaw-plugin-node`。
+本文档面向 OpenClaw 开发者，说明如何安装并接入 `[openclaw-glance](https://github.com/lingyv/openclaw-glance)`。
 
 ## 0. 插件功能与接入流程
 

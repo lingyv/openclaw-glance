@@ -1,4 +1,4 @@
-# openclaw-plugin-node
+# openclaw-glance
 
 智能盯盘：OpenClaw 插件客户端（连接 `openclaw-bridge`）。
 
