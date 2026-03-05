@@ -4,6 +4,22 @@
 
 OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
 
+## 插件定位
+
+这个插件用于让 OpenClaw 在“用户提出盯盘需求”时，快速完成以下动作：
+
+- 建立与 `openclaw-bridge` 的长连接
+- 把用户自然语言需求转成结构化策略并提交（`watch.create`）
+- 在触发后实时接收 `watch.triggered` 回调给 OpenClaw 业务层
+- 支持策略控制（激活、暂停、删除）
+
+## OpenClaw 调用时机
+
+- 用户新建盯盘：调用 `submitWatchDemand` 或 `createWatch`
+- 用户修改状态：调用 `activate` / `pause`
+- 用户删除盯盘：调用 `remove`
+- 需要接收触发消息：注册 `onTriggered` 并保持连接在线
+
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接

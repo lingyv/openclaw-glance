@@ -2,6 +2,25 @@
 
 本文档面向 OpenClaw 开发者，说明如何安装并接入 `openclaw-plugin-node`。
 
+## 0. 插件功能与接入流程
+
+该插件是 OpenClaw 的“盯盘执行层”，用于把用户需求落到智能盯盘系统并回收触发结果。
+
+核心能力：
+
+- 与 `openclaw-bridge` 建立并维持 WebSocket 长连接
+- 创建/激活/暂停/删除盯盘策略
+- 在策略触发后实时接收 `watch.triggered` 消息
+- 断线自动重连与请求排队，减少短暂网络抖动影响
+
+OpenClaw 侧推荐调用流程：
+
+1. 用户表达盯盘意图，OpenClaw 解析出 `productCode/productType/condition/variables`
+2. OpenClaw 初始化插件并连接 bridge（`adapter.start()`）
+3. 调用 `adapter.submitWatchDemand(...)` 创建策略
+4. 注册 `adapter.onTriggered(...)`，把触发事件回调给 OpenClaw 对话/任务流
+5. 用户后续操作时调用 `pause/activate/remove`
+
 ## 1. 前置条件
 
 - Node.js >= 20
