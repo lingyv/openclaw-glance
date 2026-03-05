@@ -52,7 +52,6 @@ export class OpenClawBridgeClient extends EventEmitter {
 
   get wsUrl() {
     const url = new URL('/openclaw/ws', this.baseWsUrl);
-    url.searchParams.set('token', this.token);
     return url.toString();
   }
 
@@ -173,7 +172,11 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   async _connectOnce() {
-    const ws = new WebSocket(this.wsUrl);
+    const ws = new WebSocket(this.wsUrl, {
+      headers: {
+        Authorization: `Bearer ${this.token}`
+      }
+    });
 
     await new Promise((resolve, reject) => {
       const onOpen = () => {

@@ -102,5 +102,5 @@ await adapter.submitWatchDemand({
 
 ## 说明
 
-- 先获取 ws `token`，然后使用 `ws://<host>:8005/openclaw/ws?token=<TOKEN>` 建连。
+- 先获取 ws `token`，然后连接 `ws://<host>:8005/openclaw/ws`，并在握手 Header 传 `Authorization: Bearer <TOKEN>`。
 - 发布时将导出 `src/` 与 `README.md`（见 `package.json` 的 `files/exports`）。
