@@ -2,6 +2,8 @@
 
 Node 子项目：OpenClaw 插件客户端（连接 `openclaw-bridge`）。
 
+OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
+
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
