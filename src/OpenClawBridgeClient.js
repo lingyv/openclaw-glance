@@ -11,6 +11,43 @@ function makeRequestId() {
   return `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * 全局单例实例
+ * @type {OpenClawBridgeClient|null}
+ */
+let globalInstance = null;
+
+/**
+ * 获取全局单例实例
+ * @param {Object} options - 创建实例的选项（仅首次创建时有效）
+ * @returns {OpenClawBridgeClient} 全局单例实例
+ */
+export function getGlobalClient(options) {
+  if (!globalInstance) {
+    globalInstance = new OpenClawBridgeClient(options);
+  }
+  return globalInstance;
+}
+
+/**
+ * 获取全局单例实例（别名，推荐使用）
+ * @param {Object} options - 创建实例的选项（仅首次创建时有效）
+ * @returns {OpenClawBridgeClient} 全局单例实例
+ */
+export function getInstance(options) {
+  return getGlobalClient(options);
+}
+
+/**
+ * 重置全局单例实例（主要用于测试）
+ */
+export function resetGlobalClient() {
+  if (globalInstance) {
+    globalInstance.close();
+    globalInstance = null;
+  }
+}
+
 export class OpenClawBridgeClient extends EventEmitter {
   constructor(options) {
     super();

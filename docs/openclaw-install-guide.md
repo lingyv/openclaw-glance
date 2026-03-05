@@ -48,6 +48,29 @@ npm install git+ssh://git@github.com:lingyv/openclaw-glance.git#main
 import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
 ```
 
+### 方式C：全局安装（推荐多实例场景）
+
+对于需要在多个地方共用同一个 WebSocket 连接的场量，建议使用全局安装：
+
+```bash
+# 全局安装到 OpenClaw 插件目录
+npm install -g git+ssh://git@github.com:lingyv/openclaw-glance.git#main
+
+# 或本地全局安装
+npm install -g /path/to/openclaw-glance
+```
+
+全局安装后，插件会被链接到全局 node 模块目录，可在任意位置通过包名引入：
+
+```js
+import { OpenClawPluginAdapter, getAdapter } from 'openclaw-glance';
+```
+
+**全局安装的优势：**
+- 所有用户/渠道共用一个 WebSocket 连接，减少资源占用
+- 避免重复连接导致的风控问题
+- 连接状态全局共享，已连接的客户端无需等待
+
 ## 2.1 安装 Skill（可选但推荐）
 
 该插件包含 OpenClaw Skill，可实现自然语言盯盘需求（需 OpenClaw v0.4+）。

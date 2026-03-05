@@ -1,2 +1,2 @@
-export { OpenClawBridgeClient } from './OpenClawBridgeClient.js';
-export { OpenClawPluginAdapter } from './OpenClawPluginAdapter.js';
+export { OpenClawBridgeClient, getGlobalClient, getInstance, resetGlobalClient } from './OpenClawBridgeClient.js';
+export { OpenClawPluginAdapter, getGlobalAdapter, getAdapter, resetGlobalAdapter } from './OpenClawPluginAdapter.js';
