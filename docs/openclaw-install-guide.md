@@ -52,6 +52,95 @@ await adapter.start();
 
 ## 5. 提交盯盘需求
 
+### 5.1 市场类型与代码
+
+| 市场 | `productType` | `productCode` 示例 | 行情频率 | 说明 |
+|------|---------------|-------------------|----------|------|
+| A股个股 | `stock` | `000001` | 约每 3 秒 | 可使用 `turnover_rate` |
+| A股指数 | `index` | `000300` | 约每 3 秒 | 可使用 `turnover_rate` |
+| 港股 | `hk_stock` | `00700` | 延迟约 15 分钟 | 可使用 `turnover_rate` |
+| 比特币 | `crypto` | `BTCUSDT` | 约每 10 秒 | 不支持 `turnover_rate` |
+
+### 5.2 条件表达式变量规则
+
+- 通用变量：`price`, `volume`, `change_percent`
+- A股/港股可额外使用：`turnover_rate`
+- 比特币策略不要使用：`turnover_rate`
+- 条件表达式示例：
+  - `price >= threshold`
+  - `price >= threshold and change_percent >= cp_threshold`
+  - `price <= threshold and turnover_rate >= tr_threshold`（仅A股/港股）
+
+### 5.3 创建策略示例（按市场）
+
+#### A股个股（stock）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: '000001',
+  productType: 'stock',
+  condition: 'price >= threshold and turnover_rate >= tr_threshold',
+  variables: {
+    threshold: 12.5,
+    tr_threshold: 0.01,
+    product_name: '平安银行'
+  },
+  channels: ['openclaw'],
+  channelConfigs: { openclaw: {} }
+});
+```
+
+#### A股指数（index）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: '000300',
+  productType: 'index',
+  condition: 'price <= threshold',
+  variables: {
+    threshold: 3500,
+    product_name: '沪深300'
+  },
+  channels: ['openclaw'],
+  channelConfigs: { openclaw: {} }
+});
+```
+
+#### 港股（hk_stock，行情延迟15分钟）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: '00700',
+  productType: 'hk_stock',
+  condition: 'price >= threshold',
+  variables: {
+    threshold: 430,
+    product_name: '腾讯控股'
+  },
+  channels: ['openclaw'],
+  channelConfigs: { openclaw: {} }
+});
+```
+
+#### 比特币（crypto，不支持 turnover_rate）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: 'BTCUSDT',
+  productType: 'crypto',
+  condition: 'price >= threshold and change_percent >= cp_threshold',
+  variables: {
+    threshold: 70000,
+    cp_threshold: 0.02,
+    product_name: 'Bitcoin'
+  },
+  channels: ['openclaw'],
+  channelConfigs: { openclaw: {} }
+});
+```
+
+### 5.4 通用创建示例
+
 ```js
 const result = await adapter.submitWatchDemand({
   productCode: '00700',
@@ -63,6 +152,62 @@ const result = await adapter.submitWatchDemand({
 });
 
 console.log('watch.create.result', result);
+```
+
+### 5.5 多条件策略（单产品）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: '000001',
+  productType: 'stock',
+  condition: 'price >= price_threshold and volume >= volume_threshold and change_percent >= cp_threshold',
+  variables: {
+    price_threshold: 12.5,
+    volume_threshold: 1000000,
+    cp_threshold: 0.02,
+    product_name: '平安银行'
+  },
+  channels: ['openclaw'],
+  channelConfigs: { openclaw: {} }
+});
+```
+
+### 5.6 多产品 + 多条件策略（使用 symbols）
+
+`submitWatchDemand` 是轻量封装，默认只覆盖单产品参数。  
+多产品策略建议直接使用 `OpenClawBridgeClient.createWatch`，显式传 `symbols`：
+
+```js
+import { OpenClawBridgeClient } from 'openclaw-bridge-plugin';
+
+const client = new OpenClawBridgeClient({
+  baseWsUrl: process.env.OPENCLAW_BRIDGE_WS_BASE || 'ws://glanceup-pre.100credit.cn',
+  token: '<JWT_TOKEN>'
+});
+
+await client.connect();
+
+const result = await client.createWatch({
+  product_code: 'BTCUSDT',
+  product_type: 'crypto',
+  operator_type: 'rule',
+  operator_parameters: {
+    condition: 'c1.price >= c1_threshold and c2.price <= c2_threshold',
+    symbols: {
+      c1: { product_type: 'crypto', product_code: 'BTCUSDT' },
+      c2: { product_type: 'stock', product_code: '000001' }
+    },
+    variables: {
+      c1_threshold: 70000,
+      c2_threshold: 12.5
+    },
+    message_template: 'BTC 与 平安银行达到组合条件'
+  },
+  channels: ['openclaw'],
+  channel_configs: { openclaw: {} }
+});
+
+console.log('multi-symbol watch.create.result', result);
 ```
 
 ## 6. 接收触发通知
