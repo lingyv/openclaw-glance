@@ -1,6 +1,8 @@
 import EventEmitter from 'node:events';
 import WebSocket from 'ws';
 
+const DEFAULT_BASE_WS_URL = 'ws://glanceup-pre.100credit.cn';
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -13,7 +15,7 @@ export class OpenClawBridgeClient extends EventEmitter {
   constructor(options) {
     super();
     const {
-      baseWsUrl,
+      baseWsUrl = DEFAULT_BASE_WS_URL,
       token = '',
       heartbeatMs = 15000,
       requestTimeoutMs = 10000,
@@ -25,7 +27,6 @@ export class OpenClawBridgeClient extends EventEmitter {
       maxQueueSize = 200
     } = options || {};
 
-    if (!baseWsUrl) throw new Error('baseWsUrl is required');
     if (!token) throw new Error('token is required');
 
     this.baseWsUrl = baseWsUrl.replace(/\/$/, '');
