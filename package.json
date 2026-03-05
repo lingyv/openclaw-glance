@@ -1,0 +1,25 @@
+{
+  "name": "openclaw-bridge-plugin",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin client for ticker-monitor openclaw-bridge",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node examples/basic.js",
+    "start:adapter": "node examples/adapter.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
