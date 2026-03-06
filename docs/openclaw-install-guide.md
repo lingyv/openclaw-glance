@@ -50,7 +50,7 @@ import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
 
 ### 方式C：全局安装（推荐多实例场景）
 
-对于需要在多个地方共用同一个 WebSocket 连接的场量，建议使用全局安装：
+对于需要在多个 Node 进程中复用同一个插件包的场景，建议使用全局安装：
 
 ```bash
 # 全局安装到 OpenClaw 插件目录
@@ -63,13 +63,14 @@ npm install -g /path/to/openclaw-glance
 全局安装后，插件会被链接到全局 node 模块目录，可在任意位置通过包名引入：
 
 ```js
-import { OpenClawPluginAdapter, getAdapter } from 'openclaw-glance';
+import { OpenClawPluginAdapter, getAdapter } from 'openclaw-bridge-plugin';
 ```
 
 **全局安装的优势：**
-- 所有用户/渠道共用一个 WebSocket 连接，减少资源占用
+- 统一插件版本，便于多服务节点一致发布
+- 在单个 Node 进程内可通过 `getAdapter()` 复用一个 WebSocket 连接
 - 避免重复连接导致的风控问题
-- 连接状态全局共享，已连接的客户端无需等待
+- 降低重复初始化成本
 
 ## 2.1 安装 Skill（可选但推荐）
 

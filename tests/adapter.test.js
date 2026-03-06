@@ -12,8 +12,8 @@ class FakeClient {
     this.calls.push(['connect']);
   }
 
-  async close() {
-    this.calls.push(['close']);
+  async close(force) {
+    this.calls.push(['close', force]);
   }
 
   on() {
@@ -73,8 +73,10 @@ test('adapter control actions delegate to client', async () => {
   await adapter.pause('s1');
   await adapter.activate('s1');
   await adapter.remove('s1');
+  await adapter.stop();
 
   assert.ok(fake.calls.some((x) => x[0] === 'pauseWatch'));
   assert.ok(fake.calls.some((x) => x[0] === 'activateWatch'));
   assert.ok(fake.calls.some((x) => x[0] === 'deleteWatch'));
+  assert.ok(fake.calls.some((x) => x[0] === 'close' && x[1] === true));
 });

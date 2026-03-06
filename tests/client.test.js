@@ -50,3 +50,15 @@ test('request rejects immediately when disconnected and enqueue disabled', async
   await assert.rejects(client.ping(), /websocket not connected/);
   await client.close();
 });
+
+test('on close should not reconnect when stopped', async () => {
+  const client = buildClient({ reconnect: true });
+  client.stopped = true;
+  let reconnectCalled = false;
+  client._connectOnce = async () => {
+    reconnectCalled = true;
+  };
+
+  await client._onClose(1000, 'manual');
+  assert.equal(reconnectCalled, false);
+});

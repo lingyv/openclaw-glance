@@ -1,4 +1,4 @@
-import { OpenClawBridgeClient, getInstance as getClientInstance, getGlobalClient } from './OpenClawBridgeClient.js';
+import { OpenClawBridgeClient } from './OpenClawBridgeClient.js';
 
 /**
  * 全局单例 Adapter 实例
@@ -30,9 +30,9 @@ export function getAdapter(clientOrOptions) {
 /**
  * 重置全局单例 Adapter（主要用于测试）
  */
-export function resetGlobalAdapter() {
+export async function resetGlobalAdapter() {
   if (globalAdapterInstance) {
-    globalAdapterInstance.stop();
+    await globalAdapterInstance.stop();
     globalAdapterInstance = null;
   }
 }
@@ -55,8 +55,7 @@ export class OpenClawPluginAdapter {
     if (clientOrOptions instanceof OpenClawBridgeClient || looksLikeClient) {
       this.client = clientOrOptions;
     } else {
-      // 支持传入配置选项，创建全局单例 client
-      this.client = getClientInstance(clientOrOptions || {});
+      this.client = new OpenClawBridgeClient(clientOrOptions || {});
     }
   }
 
@@ -65,7 +64,7 @@ export class OpenClawPluginAdapter {
   }
 
   async stop() {
-    await this.client.close();
+    await this.client.close(true);
   }
 
   onTriggered(handler) {

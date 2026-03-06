@@ -41,9 +41,9 @@ export function getInstance(options) {
 /**
  * 重置全局单例实例（主要用于测试）
  */
-export function resetGlobalClient() {
+export async function resetGlobalClient() {
   if (globalInstance) {
-    globalInstance.close();
+    await globalInstance.close(true);
     globalInstance = null;
   }
 }
@@ -94,17 +94,12 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   async connect() {
-    // 不重置 stopped 状态，允许重连
-    if (this.stopped !== 'force') {
-      this.stopped = false;
-    }
+    this.stopped = false;
     await this._connectOnce();
   }
 
-  async close(force = false) {
-    // force = true 时强制停止，不重连
-    // force = false (默认) 时允许重连
-    this.stopped = force ? 'force' : false;
+  async close(force = true) {
+    this.stopped = Boolean(force);
     this._clearHeartbeat();
 
     for (const [requestId, waiter] of this.pending.entries()) {
@@ -296,9 +291,7 @@ export class OpenClawBridgeClient extends EventEmitter {
     this._clearHeartbeat();
     this.emit('disconnected', { code, reason, reconnect: this.reconnect, stopped: this.stopped });
 
-    // 即使 stoppe 为 true，也尝试重连一次（用于监控场景）
-    // 只有明确调用 close() 且传入参数时才真正停止
-    if (this.stopped === 'force') {
+    if (this.stopped) {
       return;
     }
 
@@ -307,27 +300,27 @@ export class OpenClawBridgeClient extends EventEmitter {
       return;
     }
 
-    // 持续重连，直到连接成功
-    while (!this.stopped || this.stopped === 'reconnect') {
+    while (!this.stopped) {
       this.reconnectAttempt += 1;
       const backoff = Math.min(
-        this.reconnectBaseMs * Math.min(this.reconnectAttempt, 10), // 限制指数增长，最多10次
+        this.reconnectBaseMs * Math.min(this.reconnectAttempt, 10),
         this.reconnectMaxMs
       );
       this.emit('reconnecting', { attempt: this.reconnectAttempt, backoffMs: backoff, reason: 'auto' });
       await sleep(backoff);
-      
-      if (this.stopped === 'force') {
+
+      if (this.stopped) {
         break;
       }
-      
+
       try {
         await this._connectOnce();
         this.emit('reconnected', { attempt: this.reconnectAttempt });
         return;
       } catch (err) {
-        this.emit('error', { message: `重连失败: ${err.message}`, attempt: this.reconnectAttempt });
-        // 继续重连，不抛出异常
+        const reconnectErr = new Error(`重连失败: ${err.message}`);
+        reconnectErr.attempt = this.reconnectAttempt;
+        this.emit('error', reconnectErr);
       }
     }
   }
