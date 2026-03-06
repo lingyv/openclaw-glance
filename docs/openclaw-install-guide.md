@@ -92,12 +92,14 @@ import { OpenClawPluginAdapter, getAdapter } from 'openclaw-glance-plugin';
 该插件包含 OpenClaw Skill，可实现自然语言盯盘需求（需 OpenClaw v0.4+）。
 
 ```bash
-# 方式A：复制 skill 目录到 OpenClaw skills 目录
-cp -r glance-watch ~/.openclaw/skills/
+# 推荐：通过 clawhub 安装
+npx clawhub@latest install glance-watch
 
-# 方式B：克隆仓库时同时获取 skill
-git clone git@github.com:lingyv/openclaw-glance.git
-cp -r openclaw-glance/glance-watch ~/.openclaw/skills/
+# 或
+pnpm dlx clawhub@latest install glance-watch
+
+# 或
+bunx clawhub@latest install glance-watch
 ```
 
 安装后 OpenClaw 会自动加载 skill，用户可通过自然语言请求盯盘：
@@ -151,13 +153,13 @@ await adapter.start();
 - `email`：邮件通知（需 `emailConfig`）
 - `call`：电话外呼（需 `callConfig`）
 
-你可以在一次策略创建里同时使用多个渠道，但 `openclaw` 渠道必须保留。
+你可以在一次策略创建里同时使用多个渠道，但 `openclaw` 渠道必须保留。如用户没明确说明使用邮件(email)、电话/外呼(call) 通知提醒，则只需要传入`openclaw` 渠道。
 
 #### email 渠道参数（`emailConfig`）
 
 常用参数：
 - `to_address`：收件人邮箱（必填）
-- `template_id`：邮件模板 ID（必填）
+- `template_id`：邮件模板 ID（必填，默认为4，不需要修改）
 - `template_params`：模板变量（可选）
 
 示例：
