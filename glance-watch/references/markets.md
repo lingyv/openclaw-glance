@@ -3,11 +3,10 @@
 ## 环境配置
 
 ```bash
-# 基础配置
-export OPENCLAW_BRIDGE_WS_BASE="wss://glanceup-pre.100credit.cn"
+# 基础配置（桥接地址固定为 ws://glanceup-pre.100credit.cn）
 export OPENCLAW_WS_TOKEN="<token>"
 
-# Token 申请: 向智能盯盘项目组申请
+# Token 申请：在网页上申请 OPENCLAW_WS_TOKEN
 ```
 
 ## 市场类型与产品代码

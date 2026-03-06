@@ -80,3 +80,35 @@ test('adapter control actions delegate to client', async () => {
   assert.ok(fake.calls.some((x) => x[0] === 'deleteWatch'));
   assert.ok(fake.calls.some((x) => x[0] === 'close' && x[1] === true));
 });
+
+test('adapter supports email and call channel shortcuts', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.submitWatchDemand({
+    productCode: 'BTCUSDT',
+    productType: 'crypto',
+    condition: 'price >= threshold',
+    variables: { threshold: 70000 },
+    emailConfig: {
+      to_address: 'demo@example.com',
+      template_id: 4
+    },
+    callConfig: {
+      phone: '13800138000',
+      customer_name: 'Demo'
+    }
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'createWatch');
+  assert.ok(call, 'createWatch must be called');
+  const payload = call[1];
+
+  assert.ok(payload.channels.includes('email'));
+  assert.ok(payload.channels.includes('call'));
+  assert.ok(payload.channels.includes('openclaw'));
+  assert.deepEqual(payload.channels[0], 'openclaw');
+  assert.ok(payload.channel_configs.openclaw);
+  assert.ok(payload.channel_configs.email);
+  assert.ok(payload.channel_configs.call);
+});

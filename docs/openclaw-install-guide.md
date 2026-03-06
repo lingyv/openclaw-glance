@@ -1,6 +1,6 @@
 # OpenClaw 插件安装与使用引导
 
-本文档面向 OpenClaw 开发者，说明如何安装并接入 `[openclaw-glance](https://github.com/lingyv/openclaw-glance)`。
+本文档面向 OpenClaw 开发者，说明如何安装并接入 `openclaw-glance-plugin`。
 
 ## 0. 插件功能与接入流程
 
@@ -21,6 +21,15 @@ OpenClaw 侧推荐调用流程：
 4. 注册 `adapter.onTriggered(...)`，把触发事件回调给 OpenClaw 对话/任务流
 5. 用户后续操作时调用 `pause/activate/remove`
 
+### 0.1 给大模型的执行规则（建议直接固化）
+
+1. 只有当用户明确提出“盯盘/提醒/监控”意图时才调用插件。  
+2. 创建策略前必须拿到 4 个核心字段：`productCode`、`productType`、`condition`、`variables`。  
+3. 信息不完整时先追问，不要生成猜测阈值。  
+4. `openclaw` 渠道必须保留；`email/call` 仅在用户明确要求时添加。  
+5. 收到 `watch.create.result.success=false` 时，向用户回报失败原因，不要静默重试。  
+6. 比特币（`crypto`）条件中禁止使用 `turnover_rate`。  
+
 ## 1. 前置条件
 
 - Node.js >= 20
@@ -28,33 +37,39 @@ OpenClaw 侧推荐调用流程：
 
 ## 2. 安装插件
 
-### 方式A：本地目录开发接入
+### 方式A：通过 npm 安装（推荐）
+
+```bash
+npm install openclaw-glance-plugin
+```
+
+安装后在代码中引入：
+
+```js
+import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
+```
+
+### 方式B：本地目录开发接入
 
 ```bash
 # 在 openclaw 项目中
 npm install /path/to/openclaw-plugin-node
 ```
 
-### 方式B：git 仓库接入
+### 方式C：git 仓库接入
 
 ```bash
 # 示例：替换为实际仓库地址与分支/标签
 npm install git+ssh://git@github.com:lingyv/openclaw-glance.git#main
 ```
 
-安装后在代码中引入：
-
-```js
-import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
-```
-
-### 方式C：全局安装（推荐多实例场景）
+### 方式D：全局安装（推荐多实例场景）
 
 对于需要在多个 Node 进程中复用同一个插件包的场景，建议使用全局安装：
 
 ```bash
 # 全局安装到 OpenClaw 插件目录
-npm install -g git+ssh://git@github.com:lingyv/openclaw-glance.git#main
+npm install -g openclaw-glance-plugin
 
 # 或本地全局安装
 npm install -g /path/to/openclaw-glance
@@ -63,7 +78,7 @@ npm install -g /path/to/openclaw-glance
 全局安装后，插件会被链接到全局 node 模块目录，可在任意位置通过包名引入：
 
 ```js
-import { OpenClawPluginAdapter, getAdapter } from 'openclaw-bridge-plugin';
+import { OpenClawPluginAdapter, getAdapter } from 'openclaw-glance-plugin';
 ```
 
 **全局安装的优势：**
@@ -72,7 +87,7 @@ import { OpenClawPluginAdapter, getAdapter } from 'openclaw-bridge-plugin';
 - 避免重复连接导致的风控问题
 - 降低重复初始化成本
 
-## 2.1 安装 Skill（可选但推荐）
+## 2.1 安装 Skill
 
 该插件包含 OpenClaw Skill，可实现自然语言盯盘需求（需 OpenClaw v0.4+）。
 
@@ -92,14 +107,19 @@ cp -r openclaw-glance/glance-watch ~/.openclaw/skills/
 
 ## 3. 申请 WebSocket token
 
-向智能盯盘项目组申请 token
+在网页上申请 `OPENCLAW_WS_TOKEN`。
+
+token 使用约束：
+- 该 token 用于 WebSocket 握手鉴权（`Authorization: Bearer <TOKEN>`）
+- 失效或无效时，连接会失败并返回 `invalid token`
+- 需重新在网页申请新 token
 
 ## 4. 在 OpenClaw 中初始化插件
 
 ```js
-import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
+import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
 
-const bridgeBase = process.env.OPENCLAW_BRIDGE_WS_BASE || 'ws://glanceup-pre.100credit.cn';
+const bridgeBase = 'ws://glanceup-pre.100credit.cn';
 const token = '<JWT_TOKEN>'; // 上面申请的token
 
 const adapter = new OpenClawPluginAdapter({
@@ -113,6 +133,65 @@ await adapter.start();
 
 ## 5. 提交盯盘需求
 
+### 5.-1 创建前校验清单（给大模型）
+
+创建前建议按以下顺序校验：
+
+1. `productCode` 是否有效（A股6位、港股5位、BTC 通常 `BTCUSDT`）。  
+2. `productType` 是否在支持范围：`stock/index/hk_stock/crypto`。  
+3. `condition` 是否只使用允许变量。  
+4. `variables` 是否包含条件中引用的全部阈值。  
+5. `channels` 是否包含 `openclaw`。  
+
+### 5.0 通知渠道支持
+
+插件支持以下渠道组合：
+
+- `openclaw`：回调到 OpenClaw 长连接（必传）
+- `email`：邮件通知（需 `emailConfig`）
+- `call`：电话外呼（需 `callConfig`）
+
+你可以在一次策略创建里同时使用多个渠道，但 `openclaw` 渠道必须保留。
+
+#### email 渠道参数（`emailConfig`）
+
+常用参数：
+- `to_address`：收件人邮箱（必填）
+- `template_id`：邮件模板 ID（必填）
+- `template_params`：模板变量（可选）
+
+示例：
+
+```js
+emailConfig: {
+  to_address: 'demo@example.com',
+  template_id: 4,
+  template_params: {
+    title: '监控提醒',
+    product_name: '腾讯控股',
+    threshold: '430'
+  }
+}
+```
+
+#### call 渠道参数（`callConfig`）
+
+常用参数：
+- `phone`：手机号（必填）
+- `customer_name`：客户姓名（可选）
+- `condition`：外呼文案（可选，通常可不填，默认使用触发消息）
+- 建议手机号使用标准 11 位手机号字符串
+
+示例：
+
+```js
+callConfig: {
+  phone: '13800138000',
+  customer_name: 'Demo',
+  condition: '腾讯控股价格达到430港元'
+}
+```
+
 ### 5.1 市场类型与代码
 
 | 市场 | `productType` | `productCode` 示例 | 行情频率 | 说明 |
@@ -121,6 +200,12 @@ await adapter.start();
 | A股指数 | `index` | `000300` | 约每 3 秒 | 可使用 `turnover_rate` |
 | 港股 | `hk_stock` | `00700` | 延迟约 15 分钟 | 可使用 `turnover_rate` |
 | 比特币 | `crypto` | `BTCUSDT` | 约每 10 秒 | 不支持 `turnover_rate` |
+
+常用意图映射（给模型）：
+- “A股个股/股票” -> `stock`
+- “指数/沪深300/上证” -> `index`
+- “港股/腾讯/美团” -> `hk_stock`
+- “比特币/BTC” -> `crypto`
 
 ### 5.2 条件表达式变量规则
 
@@ -215,6 +300,27 @@ const result = await adapter.submitWatchDemand({
 console.log('watch.create.result', result);
 ```
 
+### 5.4.1 多渠道示例（OpenClaw + 邮件 + 电话）
+
+```js
+await adapter.submitWatchDemand({
+  productCode: '00700',
+  productType: 'hk_stock',
+  condition: 'price >= threshold',
+  variables: { threshold: 430, product_name: '腾讯控股' },
+  channels: ['openclaw', 'email', 'call'],
+  emailConfig: {
+    to_address: 'demo@example.com',
+    template_id: 4,
+    template_params: { title: '监控提醒' }
+  },
+  callConfig: {
+    phone: '13800138000',
+    customer_name: 'Demo'
+  }
+});
+```
+
 ### 5.5 多条件策略（单产品）
 
 ```js
@@ -239,10 +345,10 @@ await adapter.submitWatchDemand({
 多产品策略建议直接使用 `OpenClawBridgeClient.createWatch`，显式传 `symbols`：
 
 ```js
-import { OpenClawBridgeClient } from 'openclaw-bridge-plugin';
+import { OpenClawBridgeClient } from 'openclaw-glance-plugin';
 
 const client = new OpenClawBridgeClient({
-  baseWsUrl: process.env.OPENCLAW_BRIDGE_WS_BASE || 'ws://glanceup-pre.100credit.cn',
+  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>'
 });
 
@@ -279,6 +385,12 @@ adapter.onTriggered((event) => {
   // 在这里回调 OpenClaw 业务逻辑
 });
 ```
+
+建议在回调中至少透传：
+- `strategy_id`
+- `product_code`
+- `message`
+- `market_data.price`
 
 ## 7. 策略控制
 

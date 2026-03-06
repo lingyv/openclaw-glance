@@ -24,6 +24,7 @@ OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-i
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
 - 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ping`
+- 支持渠道：`openclaw` / `email` / `call`
 - 订阅推送：`watch.triggered`
 - 自动重连 + 心跳
 - 断线请求排队（可配置），重连后自动冲刷
@@ -44,7 +45,6 @@ npm test
 ## 运行示例
 
 ```bash
-OPENCLAW_BRIDGE_WS_BASE=ws://glanceup-pre.100credit.cn \
 OPENCLAW_WS_TOKEN=your_ws_token \
 npm start
 ```
@@ -100,8 +100,15 @@ await adapter.submitWatchDemand({
   productType: 'hk_stock',
   condition: 'price >= threshold',
   variables: { threshold: 8.97 },
-  channels: ['openclaw'],
-  channelConfigs: { openclaw: {} }
+  channels: ['openclaw', 'email', 'call'], // openclaw 必传，email/call 可选
+  emailConfig: {
+    to_address: 'demo@example.com',
+    template_id: 4
+  },
+  callConfig: {
+    phone: '13800138000',
+    customer_name: 'Demo'
+  }
 });
 ```
 

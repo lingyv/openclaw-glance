@@ -75,6 +75,28 @@ export class OpenClawPluginAdapter {
    * 统一创建盯盘需求接口（适配 OpenClaw 侧参数）。
    */
   async submitWatchDemand(demand) {
+    const channels = Array.isArray(demand.channels)
+      ? demand.channels
+          .filter((x) => typeof x === 'string' && x.trim())
+          .map((x) => x.trim().toLowerCase())
+      : [];
+    const channelConfigs = { ...(demand.channelConfigs || {}) };
+
+    if (demand.openclawConfig) {
+      channelConfigs.openclaw = demand.openclawConfig;
+      if (!channels.includes('openclaw')) channels.push('openclaw');
+    }
+    if (demand.emailConfig) {
+      channelConfigs.email = demand.emailConfig;
+      if (!channels.includes('email')) channels.push('email');
+    }
+    if (demand.callConfig) {
+      channelConfigs.call = demand.callConfig;
+      if (!channels.includes('call')) channels.push('call');
+    }
+    if (!channels.includes('openclaw')) channels.unshift('openclaw');
+    if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
+
     const payload = {
       product_code: demand.productCode,
       product_type: demand.productType || 'stock',
@@ -84,8 +106,8 @@ export class OpenClawPluginAdapter {
         variables: demand.variables || {},
         message_template: demand.messageTemplate
       },
-      channels: demand.channels || ['openclaw'],
-      channel_configs: demand.channelConfigs || { openclaw: {} }
+      channels,
+      channel_configs: channelConfigs
     };
     return this.client.createWatch(payload);
   }

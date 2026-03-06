@@ -1,6 +1,6 @@
-import { OpenClawPluginAdapter } from 'openclaw-bridge-plugin';
+import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
 
-const bridgeBase = process.env.OPENCLAW_BRIDGE_WS_BASE || 'wss://glanceup-pre.100credit.cn';
+const bridgeBase = 'ws://glanceup-pre.100credit.cn';
 const token = process.env.OPENCLAW_WS_TOKEN;
 
 const adapter = new OpenClawPluginAdapter({
@@ -40,9 +40,17 @@ const watchDemand = {
     cp_threshold: 0.01,
     product_name: 'Bitcoin'
   },
-  channels: ['openclaw'],
-  channelConfigs: { openclaw: {} }
+  // openclaw 必传；email/call 可选
+  channels: ['openclaw', 'email', 'call'],
+  emailConfig: {
+    to_address: 'demo@example.com',
+    template_id: 4
+  },
+  callConfig: {
+    phone: '13800138000',
+    customer_name: 'Demo'
+  }
 };
 
 const resp = await adapter.submitWatchDemand(watchDemand);
-console.log('Created:', JSON.stringifyresp));
+console.log('Created:', JSON.stringify(resp));
