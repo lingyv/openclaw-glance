@@ -37,7 +37,7 @@ OpenClaw 侧推荐调用流程：
 
 ## 2. 安装插件
 
-### 方式A：通过 npm 安装（推荐）
+### 方式A：通过 npm 安装
 
 ```bash
 npm install openclaw-glance-plugin
@@ -49,30 +49,13 @@ npm install openclaw-glance-plugin
 import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
 ```
 
-### 方式B：本地目录开发接入
-
-```bash
-# 在 openclaw 项目中
-npm install /path/to/openclaw-plugin-node
-```
-
-### 方式C：git 仓库接入
-
-```bash
-# 示例：替换为实际仓库地址与分支/标签
-npm install git+ssh://git@github.com:lingyv/openclaw-glance.git#main
-```
-
-### 方式D：全局安装（推荐多实例场景）
+### 方式B：全局安装（推荐多实例场景，默认使用该方式全局安装）
 
 对于需要在多个 Node 进程中复用同一个插件包的场景，建议使用全局安装：
 
 ```bash
 # 全局安装到 OpenClaw 插件目录
 npm install -g openclaw-glance-plugin
-
-# 或本地全局安装
-npm install -g /path/to/openclaw-glance
 ```
 
 全局安装后，插件会被链接到全局 node 模块目录，可在任意位置通过包名引入：
