@@ -75,7 +75,14 @@ import { OpenClawPluginAdapter, getAdapter } from 'openclaw-glance-plugin';
 该插件包含 OpenClaw Skill，可实现自然语言盯盘需求（需 OpenClaw v0.4+）。
 
 ```bash
-# 推荐：通过 clawhub 安装
+# 默认方式：clone 仓库安装
+git clone git@github.com:lingyv/glance-watch.git
+cp -r glance-watch ~/.openclaw/skills/
+```
+
+可选方式（clawhub）：
+
+```bash
 npx clawhub@latest install glance-watch
 
 # 或
