@@ -19,7 +19,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
    - `condition`: 条件表达式
    - `variables`: 变量值
 
-4. **创建监控脚本**并运行（bridge 地址固定为 `ws://glanceup-pre.100credit.cn`）
+4. **创建监控脚本**并运行（bridge 地址固定为 `wss://glanceup-pre.100credit.cn`）
 
 ## 调用判定规则（给 OpenClaw 大模型）
 

@@ -61,7 +61,7 @@ npm run start:adapter
 import { OpenClawBridgeClient } from './src/index.js';
 
 const client = new OpenClawBridgeClient({
-  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
+  baseWsUrl: 'wss://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>',
   enqueueIfDisconnected: true
 });
@@ -90,7 +90,7 @@ const res = await client.createWatch({
 import { OpenClawPluginAdapter } from './src/index.js';
 
 const adapter = new OpenClawPluginAdapter({
-  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
+  baseWsUrl: 'wss://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>'
 });
 
@@ -125,5 +125,5 @@ await adapter.submitWatchDemand({
 
 ## 说明
 
-- 先获取 ws `token`，然后连接 `ws://<host>:8005/openclaw/ws`，并在握手 Header 传 `Authorization: Bearer <TOKEN>`。
+- 先获取 ws `token`，然后连接 `wss://<host>:8005/openclaw/ws`，并在握手 Header 传 `Authorization: Bearer <TOKEN>`。
 - 发布时将导出 `src/` 与 `README.md`（见 `package.json` 的 `files/exports`）。

@@ -111,7 +111,7 @@ token 使用约束：
 ```js
 import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
 
-const bridgeBase = 'ws://glanceup-pre.100credit.cn';
+const bridgeBase = 'wss://glanceup-pre.100credit.cn';
 const token = '<JWT_TOKEN>'; // 上面申请的token
 
 const adapter = new OpenClawPluginAdapter({
@@ -340,7 +340,7 @@ await adapter.submitWatchDemand({
 import { OpenClawBridgeClient } from 'openclaw-glance-plugin';
 
 const client = new OpenClawBridgeClient({
-  baseWsUrl: 'ws://glanceup-pre.100credit.cn',
+  baseWsUrl: 'wss://glanceup-pre.100credit.cn',
   token: '<JWT_TOKEN>'
 });
 

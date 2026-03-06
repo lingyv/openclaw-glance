@@ -1,6 +1,6 @@
 import { OpenClawPluginAdapter } from 'openclaw-glance-plugin';
 
-const bridgeBase = 'ws://glanceup-pre.100credit.cn';
+const bridgeBase = 'wss://glanceup-pre.100credit.cn';
 const token = process.env.OPENCLAW_WS_TOKEN;
 
 const adapter = new OpenClawPluginAdapter({

@@ -1,7 +1,7 @@
 import EventEmitter from 'node:events';
 import WebSocket from 'ws';
 
-const DEFAULT_BASE_WS_URL = 'ws://glanceup-pre.100credit.cn';
+const DEFAULT_BASE_WS_URL = 'wss://glanceup-pre.100credit.cn';
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
