@@ -38,7 +38,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 ## 渠道参数填写
 
-`openclaw` 渠道必传，`email` / `call` 可选。
+`openclaw` 渠道必传，`email` / `call` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call) 通知提醒，则只需要传入`openclaw` 渠道。
 
 ### email 参数（emailConfig）
 - `to_address`：收件人邮箱（必填）
