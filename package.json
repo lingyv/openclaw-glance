@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-bridge-plugin",
+  "name": "openclaw-glance-plugin",
   "version": "0.1.0",
   "description": "OpenClaw plugin client for ticker-monitor openclaw-bridge",
   "type": "module",
