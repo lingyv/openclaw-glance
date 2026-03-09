@@ -21,6 +21,8 @@ OpenClaw 侧推荐调用流程：
 4. 注册 `adapter.onTriggered(...)`，把触发事件回调给 OpenClaw 对话/任务流
 5. 用户后续操作时调用 `pause/activate/remove`
 
+如用户先问“当前价格/最新行情”，可在第 3 步前调用 `adapter.queryTickerData(...)` 先查行情。
+
 ### 0.1 给大模型的执行规则（建议直接固化）
 
 1. 只有当用户明确提出“盯盘/提醒/监控”意图时才调用插件。  
@@ -29,6 +31,7 @@ OpenClaw 侧推荐调用流程：
 4. `openclaw` 渠道必须保留；`email/call/sms` 仅在用户明确要求时添加。  
 5. 收到 `watch.create.result.success=false` 时，向用户回报失败原因，不要静默重试。  
 6. 比特币（`crypto`）条件中禁止使用 `turnover_rate`。  
+7. 用户询问行情（非创建策略）时，优先调用 `queryTickerData`，代码或市场不确定时先查 `glance-watch/data/*.csv`。  
 
 ## 1. 前置条件
 
@@ -123,6 +126,24 @@ const adapter = new OpenClawPluginAdapter({
 await adapter.start();
 ```
 
+### 4.1 查询行情（可选）
+
+插件已支持 `queryTickerData`，通过 bridge 转发到行情接口 `/api/ticker/data`。
+
+```js
+const quote = await adapter.queryTickerData({
+  stockCode: '00700',   // 或 productCode
+  market: 'HK',         // SH/SZ/HK，crypto 可传 ''
+  productType: 'hk_stock'
+});
+
+if (quote.code === '000000') {
+  console.log('最新价:', quote.data?.['最新价格']);
+} else {
+  console.log('查询失败:', quote.message);
+}
+```
+
 ## 5. 提交盯盘需求
 
 ### 5.-1 创建前校验清单（给大模型）
@@ -134,6 +155,9 @@ await adapter.start();
 3. `condition` 是否只使用允许变量。  
 4. `variables` 是否包含条件中引用的全部阈值。  
 5. `channels` 是否包含 `openclaw`。  
+
+如果是行情查询而非盯盘创建，还需要：
+6. 先确认 `stockCode` 和 `market`，不确定时在 `glance-watch/data/stock_a.csv`、`glance-watch/data/stock_hk.csv`、`glance-watch/data/index_a.csv` 搜索确认。  
 
 ### 5.0 通知渠道支持
 

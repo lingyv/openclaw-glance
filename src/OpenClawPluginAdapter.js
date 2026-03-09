@@ -116,6 +116,25 @@ export class OpenClawPluginAdapter {
     return this.client.createWatch(payload);
   }
 
+  /**
+   * 查询标的实时行情（透传到 bridge 的 ticker.query）。
+   */
+  async queryTickerData(query) {
+    const stockCode = query?.stockCode || query?.productCode || query?.stock_code || '';
+    const productType = query?.productType || query?.product_type || '';
+    let market = query?.market;
+
+    if (market == null && String(productType).toLowerCase() === 'crypto') {
+      market = '';
+    }
+
+    return this.client.queryTickerData({
+      stock_code: stockCode,
+      market: market == null ? '' : String(market),
+      product_type: productType
+    });
+  }
+
   async pause(strategyId) {
     return this.client.pauseWatch(strategyId);
   }

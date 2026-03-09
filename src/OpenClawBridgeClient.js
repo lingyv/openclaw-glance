@@ -141,6 +141,10 @@ export class OpenClawBridgeClient extends EventEmitter {
     return this._request('ping', {});
   }
 
+  async queryTickerData(payload) {
+    return this._request('ticker.query', payload || {});
+  }
+
   async waitUntilConnected(timeoutMs = this.waitConnectTimeoutMs) {
     if (this.connected && this.ws && this.ws.readyState === WebSocket.OPEN) {
       return true;

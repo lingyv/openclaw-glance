@@ -39,6 +39,11 @@ class FakeClient {
     this.calls.push(['deleteWatch', strategyId]);
     return { ok: true };
   }
+
+  async queryTickerData(payload) {
+    this.calls.push(['queryTickerData', payload]);
+    return { ok: true, payload };
+  }
 }
 
 test('adapter maps demand into bridge payload', async () => {
@@ -142,4 +147,21 @@ test('adapter supports sms channel shortcut', async () => {
     template_id: 90010,
     content: '测试消息1'
   });
+});
+
+test('adapter queryTickerData maps payload fields', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.queryTickerData({
+    productCode: 'BTCUSDT',
+    productType: 'crypto'
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'queryTickerData');
+  assert.ok(call, 'queryTickerData must be called');
+  const payload = call[1];
+  assert.equal(payload.stock_code, 'BTCUSDT');
+  assert.equal(payload.product_type, 'crypto');
+  assert.equal(payload.market, '');
 });

@@ -51,6 +51,35 @@ test('request rejects immediately when disconnected and enqueue disabled', async
   await client.close();
 });
 
+test('queryTickerData sends ticker.query request', async () => {
+  const client = buildClient({ enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  const p = client.queryTickerData({ stock_code: '00700', market: 'HK' });
+  const req = sent[0];
+  assert.equal(req.type, 'ticker.query');
+  assert.equal(req.payload.stock_code, '00700');
+  assert.equal(req.payload.market, 'HK');
+
+  client._onMessage(
+    JSON.stringify({
+      request_id: req.request_id,
+      type: 'ticker.query.result',
+      success: true,
+      code: '000000'
+    })
+  );
+  const resp = await p;
+  assert.equal(resp.success, true);
+  assert.equal(resp.code, '000000');
+  await client.close();
+});
+
 test('on close should not reconnect when stopped', async () => {
   const client = buildClient({ reconnect: true });
   client.stopped = true;
