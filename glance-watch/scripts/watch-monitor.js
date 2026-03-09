@@ -26,6 +26,14 @@ adapter.onTriggered((event) => {
 
 await adapter.start();
 
+// 可选：先查询一次实时行情
+const tickerResp = await adapter.queryTickerData({
+  productCode: 'BTCUSDT',
+  productType: 'crypto',
+  market: ''
+});
+console.log('Ticker:', JSON.stringify(tickerResp));
+
 // 盯盘请求参数
 const watchDemand = {
   // 产品代码
@@ -40,8 +48,8 @@ const watchDemand = {
     cp_threshold: 0.01,
     product_name: 'Bitcoin'
   },
-  // openclaw 必传；email/call 可选
-  channels: ['openclaw', 'email', 'call'],
+  // openclaw 必传；email/call/sms 可选
+  channels: ['openclaw', 'email', 'call', 'sms'],
   emailConfig: {
     to_address: 'demo@example.com',
     template_id: 4
@@ -49,6 +57,11 @@ const watchDemand = {
   callConfig: {
     phone: '13800138000',
     customer_name: 'Demo'
+  },
+  smsConfig: {
+    receiver: '13968617776',
+    template_id: 90010,
+    content: '测试消息1'
   }
 };
 

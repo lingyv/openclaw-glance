@@ -21,6 +21,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 4. **创建监控脚本**并运行（bridge 地址固定为 `wss://glanceup-pre.100credit.cn`）
 
+5. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
+
 ## 调用判定规则（给 OpenClaw 大模型）
 
 只有在用户明确表达以下意图时调用插件：
@@ -36,9 +38,66 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 缺任一项时先追问，不要猜测阈值。
 
+## 标的检索规则（必须遵循）
+
+当 OpenClaw 不能直接确定 `productCode`/`productType` 时，必须先在本地标的数据中检索，再和用户确认。
+
+数据文件（CSV，字段为 `类型,代码,名称,完整代码,市场`）：
+- `data/stock_a.csv`：A股个股列表（`productType=stock`）
+- `data/stock_hk.csv`：港股个股列表（`productType=hk_stock`）
+- `data/index_a.csv`：A股指数列表（`productType=index`）
+
+### 场景1：用户只说股票简称/名称
+- 使用模糊搜索在上述 CSV 中查找名称。
+- 若命中多条，必须把候选项（代码 + 名称 + 市场）发给用户确认，不要自行猜测。
+- 用户确认后再创建策略。
+
+### 场景2：OpenClaw 不知道某个标的代码或所属市场
+- 使用 `rg`（或 `grep`）在三个 CSV 中搜索标的名称或代码。
+- 根据命中结果判断市场并映射 `productType`：
+  - A股个股 -> `stock`
+  - 港股个股 -> `hk_stock`
+  - A股指数 -> `index`
+- 若搜索结果不唯一或冲突，先向用户确认后再继续。
+
+### 推荐检索命令
+
+```bash
+# 按名称模糊查找（推荐）
+rg -n "平安银行|腾讯|沪深300|BTC" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+
+# 按代码查找
+rg -n "000001|00700|399001" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+
+# grep 兜底（无 rg 时）
+grep -nE "平安银行|腾讯|沪深300|000001|00700" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+```
+
+## 行情查询（queryTickerData）
+
+当用户问“现在多少钱”“最新价格”“查一下某标的行情”等问题时，执行以下流程：
+
+1. 先根据用户输入确定标的代码与市场：
+- 如果是简称/名称，先在 `data/*.csv` 里模糊搜索并向用户确认候选。
+- 如果是明确代码，按代码在 `data/*.csv` 查对应 `市场`。
+
+2. 调用插件查询接口：
+
+```javascript
+await adapter.queryTickerData({
+  stockCode: '00700',   // 或 productCode
+  market: 'HK',         // SH/SZ/HK，crypto 可传 ''
+  productType: 'hk_stock'
+})
+```
+
+3. 根据返回结果给用户反馈：
+- `code = "000000"`：返回行情数据（如最新价格、涨跌幅等）。
+- 非 `000000`：返回失败原因，并建议用户确认代码/市场后重试。
+
 ## 渠道参数填写
 
-`openclaw` 渠道必传，`email` / `call` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call) 通知提醒，则只需要传入`openclaw` 渠道。
+`openclaw` 渠道必传，`email` / `call` / `sms` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms) 通知提醒，则只需要传入`openclaw` 渠道。
 
 ### email 参数（emailConfig）
 - `to_address`：收件人邮箱（必填）
@@ -68,6 +127,20 @@ callConfig: {
   phone: '13800138000',
   customer_name: 'Demo',
   condition: '比特币价格突破阈值'
+}
+```
+
+### sms 参数（smsConfig）
+- `receiver`：手机号（必填；也可传 `phone`，推荐 `receiver`）
+- `template_id`：短信模板 ID（可选，默认 90010，不需要修改）
+- `content`：短信变量内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+
+示例：
+```javascript
+smsConfig: {
+  receiver: '13968617776',
+  template_id: 90010,
+  content: '测试消息1'
 }
 ```
 
@@ -117,7 +190,7 @@ variables: { threshold: 420, product_name: '腾讯控股' }
 当监控触发时:
 1. 解析 `market_data` 获取价格、涨跌幅等信息
 2. 发送提醒到用户当前对话的渠道（群聊/私聊）
-3. `openclaw` 渠道必传，`email/call` 可按需附加
+3. `openclaw` 渠道必传，`email/call/sms` 可按需附加
 4. 根据触发消息构建友好的提醒文案
 
 如果创建失败（`watch.create.result.success=false`）：

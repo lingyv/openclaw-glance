@@ -54,5 +54,3 @@ export OPENCLAW_WS_TOKEN="<token>"
 
 ### 主流加密货币
 - 比特币: BTCUSDT
-- 以太坊: ETHUSDT
-- Solana: SOLUSDT
