@@ -112,3 +112,34 @@ test('adapter supports email and call channel shortcuts', async () => {
   assert.ok(payload.channel_configs.email);
   assert.ok(payload.channel_configs.call);
 });
+
+test('adapter supports sms channel shortcut', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.submitWatchDemand({
+    productCode: '000001',
+    productType: 'stock',
+    condition: 'price <= threshold',
+    variables: { threshold: 10 },
+    smsConfig: {
+      receiver: '13968617776',
+      template_id: 90010,
+      content: '测试消息1'
+    }
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'createWatch');
+  assert.ok(call, 'createWatch must be called');
+  const payload = call[1];
+
+  assert.ok(payload.channels.includes('sms'));
+  assert.ok(payload.channels.includes('openclaw'));
+  assert.deepEqual(payload.channels[0], 'openclaw');
+  assert.ok(payload.channel_configs.openclaw);
+  assert.deepEqual(payload.channel_configs.sms, {
+    receiver: '13968617776',
+    template_id: 90010,
+    content: '测试消息1'
+  });
+});

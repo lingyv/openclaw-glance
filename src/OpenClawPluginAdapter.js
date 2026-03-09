@@ -94,6 +94,10 @@ export class OpenClawPluginAdapter {
       channelConfigs.call = demand.callConfig;
       if (!channels.includes('call')) channels.push('call');
     }
+    if (demand.smsConfig) {
+      channelConfigs.sms = demand.smsConfig;
+      if (!channels.includes('sms')) channels.push('sms');
+    }
     if (!channels.includes('openclaw')) channels.unshift('openclaw');
     if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
 

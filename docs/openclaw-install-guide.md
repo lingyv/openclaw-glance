@@ -26,7 +26,7 @@ OpenClaw 侧推荐调用流程：
 1. 只有当用户明确提出“盯盘/提醒/监控”意图时才调用插件。  
 2. 创建策略前必须拿到 4 个核心字段：`productCode`、`productType`、`condition`、`variables`。  
 3. 信息不完整时先追问，不要生成猜测阈值。  
-4. `openclaw` 渠道必须保留；`email/call` 仅在用户明确要求时添加。  
+4. `openclaw` 渠道必须保留；`email/call/sms` 仅在用户明确要求时添加。  
 5. 收到 `watch.create.result.success=false` 时，向用户回报失败原因，不要静默重试。  
 6. 比特币（`crypto`）条件中禁止使用 `turnover_rate`。  
 
@@ -142,8 +142,9 @@ await adapter.start();
 - `openclaw`：回调到 OpenClaw 长连接（必传）
 - `email`：邮件通知（需 `emailConfig`）
 - `call`：电话外呼（需 `callConfig`）
+- `sms`：短信通知（需 `smsConfig`）
 
-你可以在一次策略创建里同时使用多个渠道，但 `openclaw` 渠道必须保留。如用户没明确说明使用邮件(email)、电话/外呼(call) 通知提醒，则只需要传入`openclaw` 渠道。
+你可以在一次策略创建里同时使用多个渠道，但 `openclaw` 渠道必须保留。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms) 通知提醒，则只需要传入`openclaw` 渠道。
 
 #### email 渠道参数（`emailConfig`）
 
@@ -181,6 +182,23 @@ callConfig: {
   phone: '13800138000',
   customer_name: 'Demo',
   condition: '腾讯控股价格达到430港元'
+}
+```
+
+#### sms 渠道参数（`smsConfig`）
+
+常用参数：
+- `receiver`：手机号（必填；也可传 `phone`，推荐 `receiver`）
+- `template_id`：短信模板 ID（可选，默认 90010，不需要修改）
+- `content`：短信内容变量（可选，默认使用触发消息）
+
+示例：
+
+```js
+smsConfig: {
+  receiver: '13968617776',
+  template_id: 90010,
+  content: '腾讯控股价格达到430港元'
 }
 ```
 
@@ -292,7 +310,7 @@ const result = await adapter.submitWatchDemand({
 console.log('watch.create.result', result);
 ```
 
-### 5.4.1 多渠道示例（OpenClaw + 邮件 + 电话）
+### 5.4.1 多渠道示例（OpenClaw + 邮件 + 电话 + 短信）
 
 ```js
 await adapter.submitWatchDemand({
@@ -300,7 +318,7 @@ await adapter.submitWatchDemand({
   productType: 'hk_stock',
   condition: 'price >= threshold',
   variables: { threshold: 430, product_name: '腾讯控股' },
-  channels: ['openclaw', 'email', 'call'],
+  channels: ['openclaw', 'email', 'call', 'sms'],
   emailConfig: {
     to_address: 'demo@example.com',
     template_id: 4,
@@ -309,6 +327,11 @@ await adapter.submitWatchDemand({
   callConfig: {
     phone: '13800138000',
     customer_name: 'Demo'
+  },
+  smsConfig: {
+    receiver: '13968617776',
+    template_id: 90010,
+    content: '腾讯控股价格达到430港元'
   }
 });
 ```
