@@ -7,11 +7,13 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 ## 快速开始
 
-1. **环境变量**（已在系统配置）:
-   - `OPENCLAW_WS_TOKEN`（由网页申请得到）
+1. **前置条件**（已完成）：
+   - 插件/包已安装并可用（由宿主环境预先完成）
+   - 运行时已按目标模式启动（daemon 或 OpenClaw 插件模式）
 
-2. **安装插件包**：
-   - `npm install -g openclaw-glance-plugin`
+2. **环境变量**（已在系统配置）:
+   - `OPENCLAW_WS_TOKEN`（由网页申请得到）
+   - `OPENCLAW_BASE_WS_URL` 固定为 `wss://glanceup-pre.100credit.cn`
 
 3. **用户请求盯盘时**，解析用户需求提取：
    - `productCode`: 产品代码
@@ -19,7 +21,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
    - `condition`: 条件表达式
    - `variables`: 变量值
 
-4. **创建监控脚本**并运行（bridge 地址固定为 `wss://glanceup-pre.100credit.cn`）
+4. **通过已安装运行时提交盯盘请求**（长连接由宿主运行时维护）
 
 5. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
 
@@ -37,6 +39,30 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - `variables`（阈值变量）
 
 缺任一项时先追问，不要猜测阈值。
+
+### 买卖意图与条件方向（重要）
+
+用户设置价格提醒时，往往不会说"大于等于"或"小于等于"，而是说"到了XX提醒我"。此时需要判断用户的**买卖意图**来决定条件方向：
+
+| 用户意图 | 条件方向 | 说明 |
+|---------|---------|------|
+| 想买入（逢低买入） | `price <= threshold` | 价格**跌到**目标价时提醒，抄底机会 |
+| 想卖出（止盈/止损） | `price >= threshold` | 价格**涨到**目标价时提醒，落袋为安 |
+
+**判断流程：**
+
+1. 如果用户明确说了方向（如"涨到XX"、"跌到XX"），直接使用对应条件
+2. 如果用户只说"到了XX提醒我"，**必须追问一句**：
+   - "你是想在价格涨到XX时卖出，还是跌到XX时买入？"
+   - 或者更简洁地问："这个是准备买还是卖？买的话我帮你盯跌到XX，卖的话盯涨到XX"
+3. 根据用户回答设置条件：
+   - 买入 → `price <= threshold`
+   - 卖出 → `price >= threshold`
+
+**常见表达映射：**
+- "涨到/涨过/突破/冲到" → `price >= threshold`（卖出方向）
+- "跌到/跌破/回调到/回到" → `price <= threshold`（买入方向）
+- "到了/到达/价格到" → **方向不明确，需追问买还是卖**
 
 ## 标的检索规则（必须遵循）
 
@@ -81,10 +107,10 @@ grep -nE "平安银行|腾讯|沪深300|000001|00700" data/stock_a.csv data/stoc
 - 如果是简称/名称，先在 `data/*.csv` 里模糊搜索并向用户确认候选。
 - 如果是明确代码，按代码在 `data/*.csv` 查对应 `市场`。
 
-2. 调用插件查询接口：
+2. 调用已安装插件/包暴露的查询接口（例如 `queryTickerData`）：
 
 ```javascript
-await adapter.queryTickerData({
+await runtime.queryTickerData({
   stockCode: '00700',   // 或 productCode
   market: 'HK',         // SH/SZ/HK，crypto 可传 ''
   productType: 'hk_stock'
