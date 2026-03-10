@@ -2,7 +2,10 @@
 
 智能盯盘：OpenClaw 插件（可选 daemon）连接 `openclaw-bridge`。
 
-OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
+安装与接入文档：
+
+- OpenClaw 插件模式：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
+- Claude/Codex daemon 模式：[docs/daemon-install-guide.md](./docs/daemon-install-guide.md)
 
 ## 插件定位
 
