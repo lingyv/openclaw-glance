@@ -15,3 +15,17 @@ test('resolveRuntimeConfig should throw when token is missing', () => {
     /token is required/i
   );
 });
+
+test('resolveRuntimeConfig should reject non-ws protocols', () => {
+  assert.throws(
+    () =>
+      resolveRuntimeConfig({
+        env: {
+          OPENCLAW_WS_TOKEN: 'token',
+          OPENCLAW_BASE_WS_URL: 'https://glanceup-pre.100credit.cn'
+        },
+        pluginConfig: {}
+      }),
+    /invalid baseWsUrl protocol/i
+  );
+});

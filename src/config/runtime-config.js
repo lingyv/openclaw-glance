@@ -32,7 +32,13 @@ export function resolveRuntimeConfig({ env = process.env, pluginConfig = {} } = 
     if (!parsed.protocol || !parsed.host) {
       throw new Error('invalid baseWsUrl');
     }
+    if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
+      throw new Error(`invalid baseWsUrl protocol: ${parsed.protocol}`);
+    }
   } catch (_err) {
+    if (String(_err?.message || '').toLowerCase().includes('protocol')) {
+      throw _err;
+    }
     throw new Error(`invalid baseWsUrl: ${baseWsUrl}`);
   }
   return {

@@ -82,3 +82,60 @@ test('plugin register exposes control api and tool registrations', async () => {
     BridgeRuntime.prototype.request = originalRequest;
   }
 });
+
+test('plugin register supports openclaw-style registerTool execute signature', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-control-lock-'));
+  const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
+  const originalRequest = BridgeRuntime.prototype.request;
+  const calls = [];
+
+  BridgeRuntime.prototype._connectOnce = async function mockConnect() {
+    this.connected = true;
+    this.emit('connected');
+  };
+  BridgeRuntime.prototype.request = async function mockRequest(type, payload) {
+    calls.push({ type, payload });
+    return { success: true, type, payload };
+  };
+
+  try {
+    const toolDefs = [];
+    const api = {
+      runtime: {
+        dispatchReply: async () => {}
+      },
+      config: {
+        channels: {
+          'glance-bridge': {
+            baseWsUrl: 'ws://127.0.0.1:10093',
+            token: 'unit-token-tool',
+            lockDir
+          }
+        }
+      },
+      registerTool(def, meta) {
+        toolDefs.push({ def, meta });
+      },
+      onShutdown() {}
+    };
+
+    plugin.register(api);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const queryDef = toolDefs.find((x) => x.def?.name === 'watch.query_ticker');
+    assert.ok(queryDef, 'watch.query_ticker tool should be registered');
+    assert.equal(typeof queryDef.def.execute, 'function');
+    assert.equal(queryDef.meta?.name, 'watch.query_ticker');
+
+    await queryDef.def.execute('tool-call-1', {
+      stockCode: '00700',
+      productType: 'hk_stock',
+      market: 'HK'
+    });
+    assert.equal(calls[0]?.type, 'ticker.query');
+  } finally {
+    await stopPluginRuntime();
+    BridgeRuntime.prototype._connectOnce = originalConnectOnce;
+    BridgeRuntime.prototype.request = originalRequest;
+  }
+});

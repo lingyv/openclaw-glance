@@ -43,3 +43,23 @@ test('runtime dispatches watch.triggered to dispatcher', async () => {
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(triggered?.payload?.strategy_id, 's1');
 });
+
+test('runtime request rejects and clears pending when ws.send throws', async () => {
+  const runtime = new BridgeRuntime({
+    baseWsUrl: 'ws://127.0.0.1:9999',
+    token: 't',
+    dispatcher: { onTriggered: async () => {} },
+    heartbeatMs: 100000
+  });
+
+  runtime.connected = true;
+  runtime.ws = {
+    readyState: 1,
+    send() {
+      throw new Error('send failed');
+    }
+  };
+
+  await assert.rejects(runtime.request('watch.create', { product_code: '00700' }), /send failed/);
+  assert.equal(runtime.pending.size, 0);
+});

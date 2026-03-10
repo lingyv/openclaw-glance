@@ -126,7 +126,13 @@ export class BridgeRuntime extends EventEmitter {
     }, this.requestTimeoutMs);
 
     this.pending.set(requestId, { resolve, reject, timer });
-    this.ws.send(JSON.stringify(msg));
+    try {
+      this.ws.send(JSON.stringify(msg));
+    } catch (err) {
+      clearTimeout(timer);
+      this.pending.delete(requestId);
+      reject(err);
+    }
   }
 
   async _connectOnce() {

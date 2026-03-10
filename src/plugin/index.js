@@ -135,12 +135,32 @@ function buildControlApi(startupPromise) {
 
 function tryRegisterTool(registerTool, name, description, handler) {
   if (typeof registerTool !== 'function') return;
+  const def = {
+    name,
+    description,
+    handler,
+    execute: async (_toolCallId, params) => handler(params || {})
+  };
+  const meta = {
+    name,
+    description
+  };
+
+  // OpenClaw-style: registerTool(def, meta)
   try {
-    registerTool({ name, description, handler });
+    registerTool(def, meta);
+    return;
+  } catch (_err) {
+    // try one-arg object signature
+  }
+
+  try {
+    registerTool(def);
     return;
   } catch (_err) {
     // try alternate host signature: (name, handler)
   }
+
   try {
     registerTool(name, handler);
   } catch (_err) {

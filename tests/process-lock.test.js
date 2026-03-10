@@ -92,3 +92,21 @@ test('concurrent acquire should allow only one owner', async () => {
     await second.release().catch(() => {});
   }
 });
+
+test('invalid lock content should not be force-removed by new contender', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'glance-lock-'));
+  const key = 'ws-token-invalid';
+  const lockFile = path.join(lockDir, `${key}.lock.json`);
+  await writeFile(lockFile, '{invalid-json', 'utf8');
+
+  const contender = new ProcessLock({
+    lockDir,
+    key,
+    heartbeatMs: 60_000,
+    staleMs: 1_000
+  });
+
+  await assert.rejects(contender.acquire(), /invalid lock record/i);
+  const stillThere = await readFile(lockFile, 'utf8');
+  assert.equal(stillThere, '{invalid-json');
+});

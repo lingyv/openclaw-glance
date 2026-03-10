@@ -96,8 +96,16 @@ export class ProcessLock {
     try {
       const raw = await readFile(this.lockFile, 'utf8');
       return JSON.parse(raw);
-    } catch (_err) {
-      return null;
+    } catch (err) {
+      if (err?.code === 'ENOENT') {
+        return null;
+      }
+      if (err instanceof SyntaxError) {
+        const invalidError = new Error('invalid lock record');
+        invalidError.code = 'E_INVALID_LOCK_RECORD';
+        throw invalidError;
+      }
+      throw err;
     }
   }
 
