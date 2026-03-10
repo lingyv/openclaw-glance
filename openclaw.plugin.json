@@ -1,5 +1,5 @@
 {
-  "id": "glance-bridge",
+  "id": "openclaw-glance-plugin",
   "skills": ["./skills"],
   "configSchema": {
     "type": "object",

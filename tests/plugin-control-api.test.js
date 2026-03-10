@@ -32,7 +32,7 @@ test('plugin register exposes control api and tool registrations', async () => {
       config: {
         plugins: {
           entries: {
-            'glance-bridge': {
+            'openclaw-glance-plugin': {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10092',
                 token: 'unit-token-ctrl',
@@ -111,7 +111,7 @@ test('plugin register supports openclaw-style registerTool execute signature', a
       config: {
         plugins: {
           entries: {
-            'glance-bridge': {
+            'openclaw-glance-plugin': {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10093',
                 token: 'unit-token-tool',

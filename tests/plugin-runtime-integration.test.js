@@ -73,7 +73,7 @@ test('plugin.register wires startup and onShutdown cleanup', async () => {
       config: {
         plugins: {
           entries: {
-            'glance-bridge': {
+            'openclaw-glance-plugin': {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10081',
                 token: 'unit-token-2',

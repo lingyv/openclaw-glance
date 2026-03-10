@@ -33,20 +33,20 @@ openclaw plugins list
 {
   "plugins": {
     "enabled": true,
-    "allow": ["glance-bridge"]
+    "allow": ["openclaw-glance-plugin"]
   }
 }
 ```
 
 ## 3. 必做：配置插件参数并重启 gateway
 
-在 `~/.openclaw/openclaw.json` 中配置插件条目 `plugins.entries.glance-bridge.config`（示例）：
+在 `~/.openclaw/openclaw.json` 中配置插件条目 `plugins.entries.openclaw-glance-plugin.config`（示例）：
 
 ```json
 {
   "plugins": {
     "entries": {
-      "glance-bridge": {
+      "openclaw-glance-plugin": {
         "enabled": true,
         "config": {
           "baseWsUrl": "wss://glanceup-pre.100credit.cn",
@@ -73,7 +73,7 @@ openclaw gateway restart
 
 ## 5. 验证清单
 
-1. `openclaw plugins list` 能看到 `glance-bridge`
+1. `openclaw plugins list` 能看到 `openclaw-glance-plugin`
 2. `glance-watch` skill 已随插件加载（可执行自然语言盯盘请求）
 3. 插件启动后无鉴权错误日志
 4. 创建盯盘后，触发时可收到回流消息
@@ -83,7 +83,7 @@ openclaw gateway restart
 ### 6.1 token 无效
 
 现象：日志包含 `invalid token` 或鉴权失败。  
-处理：重新申请 token，更新 `plugins.entries.glance-bridge.config.token` 并重启 gateway。
+处理：重新申请 token，更新 `plugins.entries.openclaw-glance-plugin.config.token` 并重启 gateway。
 
 ### 6.2 单活冲突
 
@@ -93,4 +93,4 @@ openclaw gateway restart
 ### 6.3 连接反复重连
 
 现象：日志频繁出现 reconnect。  
-处理：检查网络连通性，以及 `plugins.entries.glance-bridge.config.baseWsUrl` 与 token 是否匹配。
+处理：检查网络连通性，以及 `plugins.entries.openclaw-glance-plugin.config.baseWsUrl` 与 token 是否匹配。
