@@ -11,6 +11,7 @@
   "files": [
     "index.js",
     "openclaw.plugin.json",
+    "skills",
     "src",
     "README.md"
   ],

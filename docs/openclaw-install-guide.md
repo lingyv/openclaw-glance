@@ -11,12 +11,8 @@
 
 ## 2. 必做：安装 `glance-watch` skill
 
-`glance-watch` skill 在插件模式下是必做前置，用于稳定把自然语言盯盘需求转成结构化参数。
-
-```bash
-git clone git@github.com:lingyv/glance-watch.git
-cp -r glance-watch ~/.openclaw/skills/
-```
+`glance-watch` skill 在插件模式下是必做前置，用于稳定把自然语言盯盘需求转成结构化参数。  
+本插件已在 `openclaw.plugin.json` 声明 `skills` 目录，安装插件后 skill 会随插件一起安装。
 
 ## 3. 必做：安装并启用插件
 

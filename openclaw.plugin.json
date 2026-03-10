@@ -1,6 +1,7 @@
 {
   "id": "glance-bridge",
   "channels": ["glance-bridge"],
+  "skills": ["./skills"],
   "configSchema": {
     "type": "object",
     "additionalProperties": true,
