@@ -1,0 +1,9 @@
+{
+  "id": "glance-bridge",
+  "channels": ["glance-bridge"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {}
+  }
+}
