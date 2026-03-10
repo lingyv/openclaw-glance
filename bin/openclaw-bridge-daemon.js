@@ -2,9 +2,8 @@
 import process from 'node:process';
 
 import { resolveRuntimeConfig } from '../src/config/runtime-config.js';
-import { BridgeRuntime } from '../src/runtime/BridgeRuntime.js';
-import { DaemonDispatcher } from '../src/runtime/dispatchers/DaemonDispatcher.js';
-import { ProcessLock, SingleActiveConflictError } from '../src/runtime/lock/ProcessLock.js';
+import { startDaemon } from '../src/daemon/start-daemon.js';
+import { SingleActiveConflictError } from '../src/runtime/lock/ProcessLock.js';
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   process.stdout.write(`openclaw-bridge-daemon
@@ -25,26 +24,15 @@ if (!config.token) {
   process.exit(1);
 }
 
-const dispatcher = new DaemonDispatcher({
-  onTriggered: async (event) => {
-    process.stdout.write(`${JSON.stringify({ type: 'watch.triggered', event })}\n`);
-  }
-});
-
-const lock = new ProcessLock({
-  lockDir: config.lockDir,
-  key: config.lockKey
-});
-
-const runtime = new BridgeRuntime({
-  baseWsUrl: config.baseWsUrl,
-  token: config.token,
-  dispatcher,
-  lock
-});
+let daemon = null;
 
 try {
-  await runtime.start();
+  daemon = await startDaemon({
+    config,
+    onTriggered: async (event) => {
+      process.stdout.write(`${JSON.stringify({ type: 'watch.triggered', event })}\n`);
+    }
+  });
   process.stdout.write(
     `[glance-bridge-daemon] connected baseWsUrl=${config.baseWsUrl} lockKey=${config.lockKey}\n`
   );
@@ -60,7 +48,7 @@ try {
 }
 
 const shutdown = async () => {
-  await runtime.stop().catch(() => {});
+  await daemon?.stop?.().catch(() => {});
   process.exit(0);
 };
 process.once('SIGINT', shutdown);

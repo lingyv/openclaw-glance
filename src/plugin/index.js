@@ -56,18 +56,24 @@ const plugin = {
       api?.config?.glanceBridge ||
       {};
 
-    startPluginRuntime({
+    const startupPromise = startPluginRuntime({
       runtime: api?.runtime,
       pluginConfig
-    }).catch((err) => {
-      api?.runtime?.logger?.error?.(`[glance-bridge] runtime start failed: ${err.message}`);
-      throw err;
     });
 
     if (typeof api?.onShutdown === 'function') {
-      api.onShutdown(() => stopPluginRuntime());
+      api.onShutdown(async () => {
+        await startupPromise.catch(() => {});
+        await stopPluginRuntime();
+      });
     } else {
-      installProcessShutdown(activeRuntime);
+      startupPromise
+        .then((runtime) => {
+          installProcessShutdown(runtime);
+        })
+        .catch((err) => {
+          api?.runtime?.logger?.error?.(`[glance-bridge] runtime start failed: ${err.message}`);
+        });
     }
   }
 };

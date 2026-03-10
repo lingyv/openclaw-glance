@@ -10,3 +10,4 @@ export {
   stopPluginRuntime,
   getActivePluginRuntime
 } from './plugin/index.js';
+export { startDaemon } from './daemon/start-daemon.js';
