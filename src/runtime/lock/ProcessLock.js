@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -40,6 +40,7 @@ export class ProcessLock {
     this.now = now;
     this.heartbeatTimer = null;
     this.held = false;
+    this.startedAt = null;
   }
 
   static normalizeKey(raw) {
@@ -61,13 +62,28 @@ export class ProcessLock {
 
   async acquire() {
     await mkdir(this.lockDir, { recursive: true });
-    const previous = await this._readLockRecord();
-    if (previous && this._isRecordActive(previous)) {
-      throw new SingleActiveConflictError('connection already owned by another process', previous);
+    const maxAttempts = 4;
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      this.startedAt = this.startedAt || this.now();
+      try {
+        await this._createLockFileExclusive();
+        this.held = true;
+        this._startHeartbeat();
+        return;
+      } catch (err) {
+        if (err?.code !== 'EEXIST') {
+          throw err;
+        }
+        const previous = await this._readLockRecord();
+        if (previous && this._isRecordActive(previous)) {
+          throw new SingleActiveConflictError('connection already owned by another process', previous);
+        }
+        await rm(this.lockFile, { force: true }).catch(() => {});
+      }
     }
-    await this._writeRecord();
-    this.held = true;
-    this._startHeartbeat();
+    throw new Error(`failed to acquire lock after ${maxAttempts} attempts`);
   }
 
   async release() {
@@ -96,10 +112,25 @@ export class ProcessLock {
     const body = {
       key: this.key,
       pid: process.pid,
-      startedAt: this.now(),
+      startedAt: this.startedAt || this.now(),
       heartbeatAt: this.now()
     };
     await writeFile(this.lockFile, JSON.stringify(body), 'utf8');
+  }
+
+  async _createLockFileExclusive() {
+    const body = JSON.stringify({
+      key: this.key,
+      pid: process.pid,
+      startedAt: this.startedAt || this.now(),
+      heartbeatAt: this.now()
+    });
+    const handle = await open(this.lockFile, 'wx');
+    try {
+      await handle.writeFile(body, 'utf8');
+    } finally {
+      await handle.close();
+    }
   }
 
   _startHeartbeat() {

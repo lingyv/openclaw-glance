@@ -1,20 +1,14 @@
 # openclaw-glance
 
-智能盯盘：OpenClaw 插件（可选 daemon）连接 `openclaw-bridge`。
+智能盯盘：OpenClaw 插件连接 `openclaw-bridge`。
 
 安装与接入文档：
 
 - OpenClaw 插件模式：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
-- Claude/Codex daemon 模式：[docs/daemon-install-guide.md](./docs/daemon-install-guide.md)
 
 ## 插件定位
 
-本项目已支持两种运行模式并共用同一核心运行时：
-
-- OpenClaw 插件模式（`index.js` + `openclaw.plugin.json`）
-- daemon 模式（`bin/openclaw-bridge-daemon.js`）
-
-两种模式都维持长连接并接收 `watch.triggered`，并对同一 `baseWsUrl + token` 启用严格单活锁，防止重复实例。
+本项目当前以 OpenClaw 插件模式运行（`index.js` + `openclaw.plugin.json`），保持长连接并接收 `watch.triggered`，并对同一 `baseWsUrl + token` 启用严格单活锁，防止重复实例。
 
 ## OpenClaw 调用时机（插件模式）
 
@@ -26,7 +20,6 @@
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
-- 双入口同核心：插件模式 + daemon 模式
 - 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ping`
 - 支持渠道：`openclaw` / `email` / `call`
 - 订阅推送：`watch.triggered`
@@ -58,13 +51,6 @@ npm start
 
 ```bash
 npm run start:adapter
-```
-
-运行 daemon：
-
-```bash
-OPENCLAW_WS_TOKEN=your_ws_token \
-npm run start:daemon
 ```
 
 ## SDK 使用

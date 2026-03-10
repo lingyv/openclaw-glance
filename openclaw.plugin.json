@@ -4,6 +4,17 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": true,
-    "properties": {}
+    "properties": {
+      "baseWsUrl": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      },
+      "lockDir": {
+        "type": "string"
+      }
+    },
+    "required": ["token"]
   }
 }

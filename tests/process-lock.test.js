@@ -62,3 +62,33 @@ test('stale lock can be reclaimed when pid dead', async () => {
   assert.equal(data.pid, process.pid);
   await owner.release();
 });
+
+test('concurrent acquire should allow only one owner', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'glance-lock-'));
+  const first = new ProcessLock({
+    lockDir,
+    key: 'ws-token-z',
+    heartbeatMs: 60_000,
+    staleMs: 60_000
+  });
+  const second = new ProcessLock({
+    lockDir,
+    key: 'ws-token-z',
+    heartbeatMs: 60_000,
+    staleMs: 60_000
+  });
+
+  try {
+    const results = await Promise.allSettled([first.acquire(), second.acquire()]);
+    const successCount = results.filter((x) => x.status === 'fulfilled').length;
+    const failCount = results.filter((x) => x.status === 'rejected').length;
+    assert.equal(successCount, 1);
+    assert.equal(failCount, 1);
+
+    const rejected = results.find((x) => x.status === 'rejected');
+    assert.equal(rejected.reason?.code, 'E_SINGLE_ACTIVE_CONFLICT');
+  } finally {
+    await first.release().catch(() => {});
+    await second.release().catch(() => {});
+  }
+});

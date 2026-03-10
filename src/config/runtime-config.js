@@ -24,6 +24,17 @@ export function resolveRuntimeConfig({ env = process.env, pluginConfig = {} } = 
     pick(pluginConfig, ['lockDir', 'lock_dir'], pick(env, ['OPENCLAW_LOCK_DIR'], path.join(process.cwd(), '.openclaw-locks')))
   );
   const lockKey = ProcessLock.buildLockKey(baseWsUrl, token);
+  if (!token) {
+    throw new Error('token is required');
+  }
+  try {
+    const parsed = new URL(baseWsUrl);
+    if (!parsed.protocol || !parsed.host) {
+      throw new Error('invalid baseWsUrl');
+    }
+  } catch (_err) {
+    throw new Error(`invalid baseWsUrl: ${baseWsUrl}`);
+  }
   return {
     baseWsUrl,
     token,

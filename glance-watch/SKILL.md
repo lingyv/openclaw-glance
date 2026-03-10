@@ -11,21 +11,17 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
    - 插件/包已安装并可用（由宿主环境预先完成）
    - 运行时已按目标模式启动（daemon 或 OpenClaw 插件模式）
 
-2. **环境变量**（已在系统配置）:
-   - `OPENCLAW_WS_TOKEN`（由网页申请得到）
-   - `OPENCLAW_BASE_WS_URL` 固定为 `wss://glanceup-pre.100credit.cn`
-
-3. **用户请求盯盘时**，解析用户需求提取：
+2. **用户请求盯盘时**，解析用户需求提取：
    - `productCode`: 产品代码
    - `productType`: 市场类型 (stock/index/hk_stock/crypto)
    - `condition`: 条件表达式
    - `variables`: 变量值
 
-4. **通过已安装运行时提交盯盘请求**（长连接由宿主运行时维护）
+3. **通过已安装运行时提交盯盘请求**（长连接由宿主运行时维护）
 
-5. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
+4. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
 
-## 调用判定规则（给 OpenClaw 大模型）
+## 调用判定规则
 
 只有在用户明确表达以下意图时调用插件：
 - “帮我盯盘/监控/提醒”
@@ -40,7 +36,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 缺任一项时先追问，不要猜测阈值。
 
-### 买卖意图与条件方向（重要）
+### 买卖意图与条件方向
 
 用户设置价格提醒时，往往不会说"大于等于"或"小于等于"，而是说"到了XX提醒我"。此时需要判断用户的**买卖意图**来决定条件方向：
 
@@ -66,7 +62,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 ## 标的检索规则（必须遵循）
 
-当 OpenClaw 不能直接确定 `productCode`/`productType` 时，必须先在本地标的数据中检索，再和用户确认。
+当不能直接确定 `productCode`/`productType` 时，必须先在本地标的数据中检索，再和用户确认。
 
 数据文件（CSV，字段为 `类型,代码,名称,完整代码,市场`）：
 - `data/stock_a.csv`：A股个股列表（`productType=stock`）
@@ -78,7 +74,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - 若命中多条，必须把候选项（代码 + 名称 + 市场）发给用户确认，不要自行猜测。
 - 用户确认后再创建策略。
 
-### 场景2：OpenClaw 不知道某个标的代码或所属市场
+### 场景2：不知道某个标的代码或所属市场
 - 使用 `rg`（或 `grep`）在三个 CSV 中搜索标的名称或代码。
 - 根据命中结果判断市场并映射 `productType`：
   - A股个股 -> `stock`
@@ -225,5 +221,4 @@ variables: { threshold: 420, product_name: '腾讯控股' }
 
 ## 相关资源
 
-- 脚本: [scripts/watch-monitor.js](scripts/watch-monitor.js)
 - 市场参考: [references/markets.md](references/markets.md)

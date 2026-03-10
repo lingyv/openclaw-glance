@@ -4,9 +4,6 @@
   "description": "OpenClaw plugin client for ticker-monitor openclaw-bridge",
   "type": "module",
   "main": "index.js",
-  "bin": {
-    "openclaw-bridge-daemon": "./bin/openclaw-bridge-daemon.js"
-  },
   "exports": {
     ".": "./index.js",
     "./sdk": "./src/index.js"
@@ -14,14 +11,12 @@
   "files": [
     "index.js",
     "openclaw.plugin.json",
-    "bin",
     "src",
     "README.md"
   ],
   "scripts": {
     "start": "node examples/basic.js",
     "start:adapter": "node examples/adapter.js",
-    "start:daemon": "node bin/openclaw-bridge-daemon.js",
     "test": "node --test tests/**/*.test.js"
   },
   "engines": {

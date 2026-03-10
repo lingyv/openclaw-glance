@@ -1,7 +1,6 @@
 # OpenClaw 插件模式安装与使用指南
 
-本文档只面向 **OpenClaw 插件模式**。  
-如果你使用 Claude Code / Codex 以独立 daemon 方式运行，请看 [daemon-install-guide.md](./daemon-install-guide.md)。
+本文档只面向 **OpenClaw 插件模式**。
 
 ## 1. 前置条件
 
@@ -19,14 +18,12 @@ git clone git@github.com:lingyv/glance-watch.git
 cp -r glance-watch ~/.openclaw/skills/
 ```
 
-安装完成后，重启 OpenClaw 使 skill 生效。
-
 ## 3. 必做：安装并启用插件
 
 在 OpenClaw 扩展环境安装插件：
 
 ```bash
-openclaw plugins install -l .
+openclaw plugins install openclaw-glance-plugin
 ```
 
 确认插件被发现：
