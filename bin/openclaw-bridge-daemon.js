@@ -25,13 +25,30 @@ if (!config.token) {
 }
 
 let daemon = null;
+const testMode = process.env.OPENCLAW_DAEMON_TEST_MODE || '';
+
+function createMockRuntime() {
+  let keepAliveTimer = null;
+  return {
+    async start() {
+      keepAliveTimer = setInterval(() => {}, 1000);
+    },
+    async stop() {
+      if (keepAliveTimer) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+      }
+    }
+  };
+}
 
 try {
   daemon = await startDaemon({
     config,
     onTriggered: async (event) => {
       process.stdout.write(`${JSON.stringify({ type: 'watch.triggered', event })}\n`);
-    }
+    },
+    createRuntime: testMode === 'mock' ? () => createMockRuntime() : undefined
   });
   process.stdout.write(
     `[glance-bridge-daemon] connected baseWsUrl=${config.baseWsUrl} lockKey=${config.lockKey}\n`
