@@ -251,13 +251,15 @@ function registerControlTools(api, controlApi) {
 }
 
 const plugin = {
-  id: 'glance-bridge',
+  id: 'openclaw-glance-plugin',
   name: 'Glance Bridge Tools',
   description: 'OpenClaw tool plugin with bridge long connection runtime',
   register(api) {
     const pluginConfig =
+      api?.config?.plugins?.entries?.['openclaw-glance-plugin']?.config ||
       api?.config?.plugins?.entries?.['glance-bridge']?.config ||
       api?.config?.plugins?.entries?.glanceBridge?.config ||
+      api?.config?.plugins?.['openclaw-glance-plugin']?.config ||
       api?.config?.plugins?.['glance-bridge']?.config ||
       api?.config?.plugins?.glanceBridge?.config ||
       {};
