@@ -71,11 +71,15 @@ test('plugin.register wires startup and onShutdown cleanup', async () => {
         dispatchReply: async () => {}
       },
       config: {
-        channels: {
-          'glance-bridge': {
-            baseWsUrl: 'ws://127.0.0.1:10081',
-            token: 'unit-token-2',
-            lockDir
+        plugins: {
+          entries: {
+            'glance-bridge': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10081',
+                token: 'unit-token-2',
+                lockDir
+              }
+            }
           }
         }
       },

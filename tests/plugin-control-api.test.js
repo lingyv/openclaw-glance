@@ -30,11 +30,15 @@ test('plugin register exposes control api and tool registrations', async () => {
         dispatchReply: async () => {}
       },
       config: {
-        channels: {
-          'glance-bridge': {
-            baseWsUrl: 'ws://127.0.0.1:10092',
-            token: 'unit-token-ctrl',
-            lockDir
+        plugins: {
+          entries: {
+            'glance-bridge': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10092',
+                token: 'unit-token-ctrl',
+                lockDir
+              }
+            }
           }
         }
       },
@@ -105,11 +109,15 @@ test('plugin register supports openclaw-style registerTool execute signature', a
         dispatchReply: async () => {}
       },
       config: {
-        channels: {
-          'glance-bridge': {
-            baseWsUrl: 'ws://127.0.0.1:10093',
-            token: 'unit-token-tool',
-            lockDir
+        plugins: {
+          entries: {
+            'glance-bridge': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10093',
+                token: 'unit-token-tool',
+                lockDir
+              }
+            }
           }
         }
       },
