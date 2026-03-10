@@ -21,6 +21,72 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 4. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
 
+## 调用契约（必须遵循）
+
+### 统一动作名
+
+宿主需将已安装插件/包接口映射为以下动作名（建议保持一致）：
+
+- `watch.query_ticker`
+- `watch.create`
+- `watch.pause`
+- `watch.activate`
+- `watch.remove`
+
+### 调用顺序
+
+1. 用户是“查行情”意图：先调用 `watch.query_ticker`
+2. 用户是“盯盘创建”意图：先补齐参数后调用 `watch.create`
+3. 用户是“暂停/恢复/删除”意图：分别调用 `watch.pause` / `watch.activate` / `watch.remove`
+
+禁止跳步：创建盯盘前若缺关键字段必须先追问。
+
+### 动作参数与成功判定
+
+#### `watch.query_ticker`
+
+参数：
+- `stockCode`（或 `productCode`）
+- `productType`
+- `market`（`crypto` 可传空字符串）
+
+成功判定：
+- 返回 `code = "000000"` 或 `success = true`
+
+失败处理：
+- 返回失败原因
+- 引导用户确认代码/市场后重试
+
+#### `watch.create`
+
+参数（最少）：
+- `productCode`
+- `productType`
+- `condition`
+- `variables`
+
+建议附加：
+- `channels`（默认至少包含 `openclaw`）
+- 对应渠道配置（`emailConfig/callConfig/smsConfig`）
+
+成功判定：
+- 返回 `success = true`
+
+失败处理：
+- 明确返回失败原因，不要静默重试
+- 提示用户补充或修正参数
+
+#### `watch.pause` / `watch.activate` / `watch.remove`
+
+参数：
+- `strategyId`（或 `strategy_id`）
+
+成功判定：
+- 返回 `success = true`
+
+失败处理：
+- 返回失败原因并提示用户确认策略 ID
+
 ## 调用判定规则
 
 只有在用户明确表达以下意图时调用插件：
