@@ -4,6 +4,7 @@
   "description": "OpenClaw plugin client for ticker-monitor openclaw-bridge",
   "type": "module",
   "main": "index.js",
+  "openclaw.extensions": ["./index.js"],
   "exports": {
     ".": "./index.js",
     "./sdk": "./src/index.js"
