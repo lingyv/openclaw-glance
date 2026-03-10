@@ -1,32 +1,34 @@
 # openclaw-glance
 
-智能盯盘：OpenClaw 插件客户端（连接 `openclaw-bridge`）。
+智能盯盘：OpenClaw 插件（可选 daemon）连接 `openclaw-bridge`。
 
 OpenClaw 集成引导请看：[docs/openclaw-install-guide.md](./docs/openclaw-install-guide.md)
 
 ## 插件定位
 
-这个插件用于让 OpenClaw 在“用户提出盯盘需求”时，快速完成以下动作：
+本项目已支持两种运行模式并共用同一核心运行时：
 
-- 建立与 `openclaw-bridge` 的长连接
-- 把用户自然语言需求转成结构化策略并提交（`watch.create`）
-- 在触发后实时接收 `watch.triggered` 回调给 OpenClaw 业务层
-- 支持策略控制（激活、暂停、删除）
+- OpenClaw 插件模式（`index.js` + `openclaw.plugin.json`）
+- daemon 模式（`bin/openclaw-bridge-daemon.js`）
 
-## OpenClaw 调用时机
+两种模式都维持长连接并接收 `watch.triggered`，并对同一 `baseWsUrl + token` 启用严格单活锁，防止重复实例。
+
+## OpenClaw 调用时机（插件模式）
 
 - 用户新建盯盘：调用 `submitWatchDemand` 或 `createWatch`
 - 用户修改状态：调用 `activate` / `pause`
 - 用户删除盯盘：调用 `remove`
-- 需要接收触发消息：注册 `onTriggered` 并保持连接在线
+- 需要接收触发消息：由插件后台运行时持续接收
 
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
+- 双入口同核心：插件模式 + daemon 模式
 - 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ping`
 - 支持渠道：`openclaw` / `email` / `call`
 - 订阅推送：`watch.triggered`
 - 自动重连 + 心跳
+- 严格单活（同 token 只允许一个活跃进程）
 - 断线请求排队（可配置），重连后自动冲刷
 - 提供业务适配层 `OpenClawPluginAdapter`
 
@@ -53,6 +55,13 @@ npm start
 
 ```bash
 npm run start:adapter
+```
+
+运行 daemon：
+
+```bash
+OPENCLAW_WS_TOKEN=your_ws_token \
+npm run start:daemon
 ```
 
 ## SDK 使用
