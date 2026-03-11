@@ -123,8 +123,8 @@ function buildControlApi(startupPromise) {
       const channel = input.channel;
       const payload = { ...(input.payload || {}) };
       return runtime.request('notify.send', {
-        channel,
-        ...payload
+        ...payload,
+        channel
       });
     },
     async sendSms(payload = {}) {

@@ -180,3 +180,56 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     BridgeRuntime.prototype.request = originalRequest;
   }
 });
+
+test('notify wrappers must not allow payload to override channel', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-control-lock-'));
+  const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
+  const originalRequest = BridgeRuntime.prototype.request;
+  const calls = [];
+
+  BridgeRuntime.prototype._connectOnce = async function mockConnect() {
+    this.connected = true;
+    this.emit('connected');
+  };
+  BridgeRuntime.prototype.request = async function mockRequest(type, payload) {
+    calls.push({ type, payload });
+    return { success: true, type, payload };
+  };
+
+  try {
+    const api = {
+      runtime: {
+        dispatchReply: async () => {}
+      },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-glance-plugin': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10094',
+                token: 'unit-token-wrapper',
+                lockDir
+              }
+            }
+          }
+        }
+      },
+      registerTool() {},
+      onShutdown() {}
+    };
+
+    plugin.register(api);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await api.glanceBridge.sendSms({
+      channel: 'email',
+      receiver: '13800138000'
+    });
+    assert.equal(calls[0]?.type, 'notify.send');
+    assert.equal(calls[0]?.payload?.channel, 'sms');
+  } finally {
+    await stopPluginRuntime();
+    BridgeRuntime.prototype._connectOnce = originalConnectOnce;
+    BridgeRuntime.prototype.request = originalRequest;
+  }
+});
