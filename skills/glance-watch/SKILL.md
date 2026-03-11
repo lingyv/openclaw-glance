@@ -185,13 +185,15 @@ await runtime.queryTickerData({
 
 ## 渠道参数填写
 
-`openclaw` 渠道必传，`email` / `call` / `sms` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms) 通知提醒，则只需要传入`openclaw` 渠道。
+`openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms) 、钉钉(dingtalk) 通知提醒，则只需要传入`openclaw` 渠道。
 
 ### email 参数（emailConfig）
 - `to_address`：收件人邮箱（必填）
 - `template_id`：邮件模板 ID（必填，默认为4，不需要修改）
 - `template_params`：模板变量（可选）
-
+- `title`: 收到邮件的标题
+- `product_name`: 产品名称 
+- `content`: 消息内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
 示例：
 ```javascript
 emailConfig: {
@@ -199,10 +201,12 @@ emailConfig: {
   template_id: 4,
   template_params: {
     title: '监控提醒',
-    product_name: '比特币'
+    product_name: '比特币',
+    content: '测试消息1'
   }
 }
 ```
+用户收到的是一封title为"监控提醒",内容为"测试消息1"的一封邮件
 
 ### call 参数（callConfig）
 - `phone`：手机号（必填）
@@ -217,20 +221,42 @@ callConfig: {
   condition: '比特币价格突破阈值'
 }
 ```
+用户收到的是一通打给手机号码为13800138000的电话，电话内容为'比特币价格突破阈值'
+
 
 ### sms 参数（smsConfig）
-- `receiver`：手机号（必填；也可传 `phone`，推荐 `receiver`）
+- `receiver`：手机号（必须是纯数字）
 - `template_id`：短信模板 ID（可选，默认 90010，不需要修改）
 - `content`：短信变量内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
 
 示例：
 ```javascript
 smsConfig: {
-  receiver: '13968617776',
+  receiver: '13800138000',
   template_id: 90010,
   content: '测试消息1'
 }
 ```
+用户收到的是一封发送给手机号码为13800138000的短信，短信内容为'测试消息1'
+
+
+### 钉钉 参数（dingtalkConfig）
+- `cas_id`：钉钉用户ID
+- `template_id`：钉钉模板 ID（可选，默认 3，不需要修改）
+- `msg_type`: 消息类型：text/markdown，默认 text
+- `content`：消息内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+
+示例：
+```javascript
+dingtalkConfig: {
+  cas_id: 'user.dingtalk',
+  template_id: 3,
+  msg_type: "text",
+  content: "测试消息1"
+}
+```
+用户收到的是一条发送给钉钉号为user.dingtalk的单聊消息，消息内容为'测试消息1'
+
 
 ## 支持的市场
 
