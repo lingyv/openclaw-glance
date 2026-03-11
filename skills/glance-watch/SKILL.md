@@ -86,6 +86,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 失败处理：
 - 明确返回失败原因，不要静默重试
 - 提示用户补充或修正参数
+- 若是超时/网络波动导致的重试，必须使用同一组创建参数再次调用 `watch.create`（不要改字段和值），避免重复创建策略
+- `request_id` 由插件运行时自动生成并在同 payload 重试时自动复用；大模型无需手动设置 `request_id`
 
 #### `watch.pause` / `watch.activate` / `watch.remove`
 

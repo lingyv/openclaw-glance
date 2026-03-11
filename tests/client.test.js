@@ -91,3 +91,21 @@ test('on close should not reconnect when stopped', async () => {
   await client._onClose(1000, 'manual');
   assert.equal(reconnectCalled, false);
 });
+
+test('createWatch reuses request_id for timeout retry', async () => {
+  const client = buildClient({ requestTimeoutMs: 20, enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  await assert.rejects(client.createWatch({ product_code: '00700' }), /request timeout/);
+  await assert.rejects(client.createWatch({ product_code: '00700' }), /request timeout/);
+
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].request_id, sent[1].request_id);
+  assert.equal(sent[0].payload.request_id, sent[1].payload.request_id);
+  await client.close();
+});

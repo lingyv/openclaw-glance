@@ -63,3 +63,29 @@ test('runtime request rejects and clears pending when ws.send throws', async () 
   await assert.rejects(runtime.request('watch.create', { product_code: '00700' }), /send failed/);
   assert.equal(runtime.pending.size, 0);
 });
+
+test('runtime reuses request_id for watch.create timeout retry', async () => {
+  const runtime = new BridgeRuntime({
+    baseWsUrl: 'ws://127.0.0.1:9999',
+    token: 't',
+    dispatcher: { onTriggered: async () => {} },
+    heartbeatMs: 100000,
+    requestTimeoutMs: 20
+  });
+
+  const sent = [];
+  runtime.connected = true;
+  runtime.ws = {
+    readyState: 1,
+    send(raw) {
+      sent.push(JSON.parse(raw));
+    }
+  };
+
+  await assert.rejects(runtime.request('watch.create', { product_code: '00700' }), /request timeout/);
+  await assert.rejects(runtime.request('watch.create', { product_code: '00700' }), /request timeout/);
+
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].request_id, sent[1].request_id);
+  assert.equal(sent[0].payload.request_id, sent[1].payload.request_id);
+});
