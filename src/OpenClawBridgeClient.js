@@ -24,7 +24,13 @@ function stableStringify(value) {
   return JSON.stringify(value);
 }
 
-function watchCreateFingerprint(payload = {}) {
+const IDEMPOTENT_REQUEST_TYPES = new Set(['watch.create', 'notify.send']);
+const IDEMPOTENT_RESULT_TYPE_TO_REQUEST_TYPE = new Map([
+  ['watch.create.result', 'watch.create'],
+  ['notify.send.result', 'notify.send']
+]);
+
+function idempotentRequestFingerprint(payload = {}) {
   const normalized = { ...(payload || {}) };
   delete normalized.request_id;
   delete normalized.requestId;
@@ -106,9 +112,9 @@ export class OpenClawBridgeClient extends EventEmitter {
     this.reconnectAttempt = 0;
     this.pending = new Map();
     this.requestQueue = [];
-    this.watchCreateRetryWindowMs = 5 * 60 * 1000;
-    this.watchCreateRequestCache = new Map();
-    this.watchCreateFingerprintByRequestId = new Map();
+    this.idempotentRetryWindowMs = 5 * 60 * 1000;
+    this.idempotentRequestCache = new Map();
+    this.idempotentFingerprintByRequestId = new Map();
   }
 
   get wsUrl() {
@@ -145,8 +151,7 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   async createWatch(payload) {
-    const normalizedPayload = { ...(payload || {}) };
-    const resolved = this._resolveWatchCreateRequest(normalizedPayload);
+    const resolved = this._resolveIdempotentRequest('watch.create', payload || {});
     return this._request('watch.create', resolved.payload, { requestId: resolved.requestId });
   }
 
@@ -196,8 +201,17 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   async _request(type, payload, options = {}) {
-    const requestId = options.requestId || makeRequestId();
-    const msg = { type, request_id: requestId, payload: payload || {} };
+    let requestId = options.requestId || '';
+    let normalizedPayload = payload || {};
+    if (!requestId && IDEMPOTENT_REQUEST_TYPES.has(type)) {
+      const resolved = this._resolveIdempotentRequest(type, normalizedPayload);
+      requestId = resolved.requestId;
+      normalizedPayload = resolved.payload;
+    }
+    if (!requestId) {
+      requestId = makeRequestId();
+    }
+    const msg = { type, request_id: requestId, payload: normalizedPayload };
     const { promise, resolve, reject } = this._buildWaiter(type, requestId);
 
     if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -297,7 +311,7 @@ export class OpenClawBridgeClient extends EventEmitter {
       const waiter = this.pending.get(requestId);
       this.pending.delete(requestId);
       clearTimeout(waiter.timer);
-      this._finalizeWatchCreateRequest(msg, requestId);
+      this._finalizeIdempotentRequest(msg, requestId);
       waiter.resolve(msg);
       return;
     }
@@ -388,38 +402,40 @@ export class OpenClawBridgeClient extends EventEmitter {
     }
   }
 
-  _resolveWatchCreateRequest(payload = {}) {
+  _resolveIdempotentRequest(type, payload = {}) {
     const normalizedPayload = { ...(payload || {}) };
     let requestId = String(
       normalizedPayload.request_id || normalizedPayload.requestId || ''
     ).trim();
 
     if (!requestId) {
-      const fingerprint = watchCreateFingerprint(normalizedPayload);
-      const cached = this.watchCreateRequestCache.get(fingerprint);
+      const fingerprint = idempotentRequestFingerprint(normalizedPayload);
+      const cacheKey = `${type}:${fingerprint}`;
+      const cached = this.idempotentRequestCache.get(cacheKey);
       const now = Date.now();
-      if (cached && now - cached.ts <= this.watchCreateRetryWindowMs) {
+      if (cached && now - cached.ts <= this.idempotentRetryWindowMs) {
         requestId = cached.requestId;
       } else {
         requestId = makeRequestId();
-        this.watchCreateRequestCache.set(fingerprint, { requestId, ts: now });
+        this.idempotentRequestCache.set(cacheKey, { requestId, ts: now });
       }
-      this.watchCreateFingerprintByRequestId.set(requestId, fingerprint);
+      this.idempotentFingerprintByRequestId.set(requestId, cacheKey);
     }
 
     normalizedPayload.request_id = requestId;
     return { requestId, payload: normalizedPayload };
   }
 
-  _finalizeWatchCreateRequest(msg, requestId) {
-    if (msg?.type !== 'watch.create.result') {
+  _finalizeIdempotentRequest(msg, requestId) {
+    const requestType = IDEMPOTENT_RESULT_TYPE_TO_REQUEST_TYPE.get(msg?.type);
+    if (!requestType) {
       return;
     }
-    const fingerprint = this.watchCreateFingerprintByRequestId.get(requestId);
-    if (!fingerprint) {
+    const cacheKey = this.idempotentFingerprintByRequestId.get(requestId);
+    if (!cacheKey || !cacheKey.startsWith(`${requestType}:`)) {
       return;
     }
-    this.watchCreateFingerprintByRequestId.delete(requestId);
-    this.watchCreateRequestCache.delete(fingerprint);
+    this.idempotentFingerprintByRequestId.delete(requestId);
+    this.idempotentRequestCache.delete(cacheKey);
   }
 }

@@ -113,6 +113,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 失败处理：
 - 明确返回失败原因，不要静默重试
+- 若是超时/网络波动导致的重试，必须使用同一组通知参数再次调用（不要改字段和值）
+- `request_id` 由插件运行时自动生成并在同 payload 重试时自动复用；大模型无需手动设置 `request_id`
 
 回执说明：
 - 直连通知发送完成后，客户端会收到 `notify.sent` 事件（`overall_status/success_count/failed_count/deliveries`）

@@ -109,3 +109,21 @@ test('createWatch reuses request_id for timeout retry', async () => {
   assert.equal(sent[0].payload.request_id, sent[1].payload.request_id);
   await client.close();
 });
+
+test('_request reuses request_id for notify.send timeout retry', async () => {
+  const client = buildClient({ requestTimeoutMs: 20, enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  await assert.rejects(client._request('notify.send', { channel: 'sms', content: 'hi' }), /request timeout/);
+  await assert.rejects(client._request('notify.send', { channel: 'sms', content: 'hi' }), /request timeout/);
+
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].request_id, sent[1].request_id);
+  assert.equal(sent[0].payload.request_id, sent[1].payload.request_id);
+  await client.close();
+});
