@@ -162,6 +162,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - `data/stock_a.csv`：A股个股列表（`productType=stock`）
 - `data/stock_hk.csv`：港股个股列表（`productType=hk_stock`）
 - `data/index_a.csv`：A股指数列表（`productType=index`）
+- `data/index_hk.csv`：港股指数列表（支持指数代码和中文名称查询）
 
 ### 场景1：用户只说股票简称/名称
 - 使用模糊搜索在上述 CSV 中查找名称。
@@ -174,6 +175,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
   - A股个股 -> `stock`
   - 港股个股 -> `hk_stock`
   - A股指数 -> `index`
+  - 港股指数 -> `index`（`market=HK`）
 - 若搜索结果不唯一或冲突，先向用户确认后再继续。
 
 ### 推荐检索命令
@@ -181,12 +183,14 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 ```bash
 # 按名称模糊查找（推荐）
 rg -n "平安银行|腾讯|沪深300|BTC" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+rg -n "恒生科技指数|恒生指数|HSTECH|HSI" data/index_hk.csv
 
 # 按代码查找
 rg -n "000001|00700|399001" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+rg -n "HSTECH|HSI|VHSI" data/index_hk.csv
 
 # grep 兜底（无 rg 时）
-grep -nE "平安银行|腾讯|沪深300|000001|00700" data/stock_a.csv data/stock_hk.csv data/index_a.csv
+grep -nE "平安银行|腾讯|沪深300|000001|00700|恒生科技指数|HSTECH" data/stock_a.csv data/stock_hk.csv data/index_a.csv data/index_hk.csv
 ```
 
 ## 行情查询（queryTickerData）
@@ -196,6 +200,7 @@ grep -nE "平安银行|腾讯|沪深300|000001|00700" data/stock_a.csv data/stoc
 1. 先根据用户输入确定标的代码与市场：
 - 如果是简称/名称，先在 `data/*.csv` 里模糊搜索并向用户确认候选。
 - 如果是明确代码，按代码在 `data/*.csv` 查对应 `市场`。
+- 港股指数可直接用代码（如 `HSTECH`）或中文名称（如 `恒生科技指数`）查询；命中 `index_hk.csv` 时优先使用 `market=HK`。
 
 2. 调用已安装插件/包暴露的查询接口（例如 `queryTickerData`）：
 
@@ -296,6 +301,7 @@ dingtalkConfig: {
 |------|-------------|------|------|
 | A股个股 | stock | 000001 | 每3秒行情 |
 | A股指数 | index | 000300 | 每3秒行情 |
+| 港股指数 | index | HSTECH / 恒生科技指数 | 查询时 `market=HK` |
 | 港股 | hk_stock | 00700 | 延迟15分钟 |
 | 加密货币 | crypto | BTCUSDT | 每10秒行情 |
 
