@@ -149,6 +149,35 @@ test('adapter supports sms channel shortcut', async () => {
   });
 });
 
+test('adapter supports dingtalk channel shortcut', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.submitWatchDemand({
+    productCode: '00700',
+    productType: 'hk_stock',
+    condition: 'price >= threshold',
+    variables: { threshold: 420 },
+    dingtalkConfig: {
+      webhook: 'https://oapi.dingtalk.com/robot/send?access_token=demo',
+      atMobiles: ['13800138000']
+    }
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'createWatch');
+  assert.ok(call, 'createWatch must be called');
+  const payload = call[1];
+
+  assert.ok(payload.channels.includes('dingtalk'));
+  assert.ok(payload.channels.includes('openclaw'));
+  assert.deepEqual(payload.channels[0], 'openclaw');
+  assert.ok(payload.channel_configs.openclaw);
+  assert.deepEqual(payload.channel_configs.dingtalk, {
+    webhook: 'https://oapi.dingtalk.com/robot/send?access_token=demo',
+    atMobiles: ['13800138000']
+  });
+});
+
 test('adapter queryTickerData maps payload fields', async () => {
   const fake = new FakeClient();
   const adapter = new OpenClawPluginAdapter(fake);

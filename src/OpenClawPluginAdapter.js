@@ -98,6 +98,10 @@ export class OpenClawPluginAdapter {
       channelConfigs.sms = demand.smsConfig;
       if (!channels.includes('sms')) channels.push('sms');
     }
+    if (demand.dingtalkConfig) {
+      channelConfigs.dingtalk = demand.dingtalkConfig;
+      if (!channels.includes('dingtalk')) channels.push('dingtalk');
+    }
     if (!channels.includes('openclaw')) channels.unshift('openclaw');
     if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
 

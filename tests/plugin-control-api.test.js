@@ -53,6 +53,11 @@ test('plugin register exposes control api and tool registrations', async () => {
 
     assert.equal(typeof api.glanceBridge?.queryTickerData, 'function');
     assert.equal(typeof api.glanceBridge?.createWatch, 'function');
+    assert.equal(typeof api.glanceBridge?.sendNotification, 'function');
+    assert.equal(typeof api.glanceBridge?.sendSms, 'function');
+    assert.equal(typeof api.glanceBridge?.sendCall, 'function');
+    assert.equal(typeof api.glanceBridge?.sendEmail, 'function');
+    assert.equal(typeof api.glanceBridge?.sendDingtalk, 'function');
     assert.equal(typeof api.glanceBridge?.pauseWatch, 'function');
     assert.equal(typeof api.glanceBridge?.activateWatch, 'function');
     assert.equal(typeof api.glanceBridge?.deleteWatch, 'function');
@@ -63,11 +68,20 @@ test('plugin register exposes control api and tool registrations', async () => {
       productType: 'hk_stock'
     });
     await api.glanceBridge.createWatch({ product_code: '00700', product_type: 'hk_stock' });
+    await api.glanceBridge.sendNotification({ channel: 'sms', payload: { receiver: '13800138000' } });
+    await api.glanceBridge.sendSms({ receiver: '13800138000', content: 'test sms' });
+    await api.glanceBridge.sendCall({ phone: '13800138000', customer_name: 'demo' });
+    await api.glanceBridge.sendEmail({ to_address: 'demo@example.com', subject: 'demo' });
+    await api.glanceBridge.sendDingtalk({ webhook: 'https://oapi.dingtalk.com/demo', text: 'demo' });
     await api.glanceBridge.pauseWatch('s-1');
     await api.glanceBridge.activateWatch('s-1');
     await api.glanceBridge.deleteWatch('s-1');
 
     assert.deepEqual(tools.sort(), [
+      'notify_call',
+      'notify_dingtalk',
+      'notify_email',
+      'notify_sms',
       'watch_activate',
       'watch_create',
       'watch_pause',
@@ -77,9 +91,19 @@ test('plugin register exposes control api and tool registrations', async () => {
 
     assert.equal(requests[0].type, 'ticker.query');
     assert.equal(requests[1].type, 'watch.create');
-    assert.equal(requests[2].type, 'watch.pause');
-    assert.equal(requests[3].type, 'watch.activate');
-    assert.equal(requests[4].type, 'watch.delete');
+    assert.equal(requests[2].type, 'notify.send');
+    assert.equal(requests[2].payload.channel, 'sms');
+    assert.equal(requests[3].type, 'notify.send');
+    assert.equal(requests[3].payload.channel, 'sms');
+    assert.equal(requests[4].type, 'notify.send');
+    assert.equal(requests[4].payload.channel, 'call');
+    assert.equal(requests[5].type, 'notify.send');
+    assert.equal(requests[5].payload.channel, 'email');
+    assert.equal(requests[6].type, 'notify.send');
+    assert.equal(requests[6].payload.channel, 'dingtalk');
+    assert.equal(requests[7].type, 'watch.pause');
+    assert.equal(requests[8].type, 'watch.activate');
+    assert.equal(requests[9].type, 'watch.delete');
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
@@ -134,13 +158,22 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     assert.ok(queryDef, 'watch_query_ticker tool should be registered');
     assert.equal(typeof queryDef.def.execute, 'function');
     assert.equal(queryDef.meta?.name, 'watch_query_ticker');
+    const dingtalkDef = toolDefs.find((x) => x.def?.name === 'notify_dingtalk');
+    assert.ok(dingtalkDef, 'notify_dingtalk tool should be registered');
+    assert.equal(typeof dingtalkDef.def.execute, 'function');
 
     await queryDef.def.execute('tool-call-1', {
       stockCode: '00700',
       productType: 'hk_stock',
       market: 'HK'
     });
+    await dingtalkDef.def.execute('tool-call-2', {
+      webhook: 'https://oapi.dingtalk.com/demo',
+      text: 'demo'
+    });
     assert.equal(calls[0]?.type, 'ticker.query');
+    assert.equal(calls[1]?.type, 'notify.send');
+    assert.equal(calls[1]?.payload?.channel, 'dingtalk');
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;

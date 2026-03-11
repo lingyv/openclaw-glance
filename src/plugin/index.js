@@ -77,6 +77,10 @@ function mapDemandToCreatePayload(demand = {}) {
     channelConfigs.sms = demand.smsConfig;
     if (!channels.includes('sms')) channels.push('sms');
   }
+  if (demand.dingtalkConfig) {
+    channelConfigs.dingtalk = demand.dingtalkConfig;
+    if (!channels.includes('dingtalk')) channels.push('dingtalk');
+  }
   if (!channels.includes('openclaw')) channels.unshift('openclaw');
   if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
 
@@ -113,6 +117,27 @@ function buildControlApi(startupPromise) {
     async createWatch(payload = {}) {
       const runtime = await getReadyRuntime(startupPromise);
       return runtime.request('watch.create', payload);
+    },
+    async sendNotification(input = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const channel = input.channel;
+      const payload = { ...(input.payload || {}) };
+      return runtime.request('notify.send', {
+        channel,
+        ...payload
+      });
+    },
+    async sendSms(payload = {}) {
+      return this.sendNotification({ channel: 'sms', payload });
+    },
+    async sendCall(payload = {}) {
+      return this.sendNotification({ channel: 'call', payload });
+    },
+    async sendEmail(payload = {}) {
+      return this.sendNotification({ channel: 'email', payload });
+    },
+    async sendDingtalk(payload = {}) {
+      return this.sendNotification({ channel: 'dingtalk', payload });
     },
     async submitWatchDemand(demand = {}) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -195,6 +220,54 @@ function registerControlTools(api, controlApi) {
       }
     },
     (args) => controlApi.queryTickerData(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'notify_sms',
+    'Send SMS notification',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {}
+    },
+    (args) => controlApi.sendSms(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'notify_call',
+    'Send phone call notification',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {}
+    },
+    (args) => controlApi.sendCall(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'notify_email',
+    'Send email notification',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {}
+    },
+    (args) => controlApi.sendEmail(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'notify_dingtalk',
+    'Send dingtalk notification',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {}
+    },
+    (args) => controlApi.sendDingtalk(args || {})
   );
 
   tryRegisterTool(
