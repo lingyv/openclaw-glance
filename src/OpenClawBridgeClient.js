@@ -113,6 +113,7 @@ export class OpenClawBridgeClient extends EventEmitter {
     this.pending = new Map();
     this.requestQueue = [];
     this.idempotentRetryWindowMs = 5 * 60 * 1000;
+    this.idempotentMaxCacheEntries = 1000;
     this.idempotentRequestCache = new Map();
     this.idempotentFingerprintByRequestId = new Map();
   }
@@ -403,6 +404,7 @@ export class OpenClawBridgeClient extends EventEmitter {
   }
 
   _resolveIdempotentRequest(type, payload = {}) {
+    this._cleanupIdempotentRequestCache();
     const normalizedPayload = { ...(payload || {}) };
     let requestId = String(
       normalizedPayload.request_id || normalizedPayload.requestId || ''
@@ -424,6 +426,38 @@ export class OpenClawBridgeClient extends EventEmitter {
 
     normalizedPayload.request_id = requestId;
     return { requestId, payload: normalizedPayload };
+  }
+
+  _cleanupIdempotentRequestCache(now = Date.now()) {
+    for (const [cacheKey, entry] of this.idempotentRequestCache.entries()) {
+      if (!entry || now - entry.ts > this.idempotentRetryWindowMs) {
+        this.idempotentRequestCache.delete(cacheKey);
+        if (entry?.requestId) {
+          this.idempotentFingerprintByRequestId.delete(entry.requestId);
+        }
+      }
+    }
+
+    if (this.idempotentRequestCache.size > this.idempotentMaxCacheEntries) {
+      const sorted = Array.from(this.idempotentRequestCache.entries()).sort(
+        (a, b) => (a[1]?.ts || 0) - (b[1]?.ts || 0)
+      );
+      const overflow = this.idempotentRequestCache.size - this.idempotentMaxCacheEntries;
+      for (let i = 0; i < overflow; i += 1) {
+        const [cacheKey, entry] = sorted[i] || [];
+        if (!cacheKey) continue;
+        this.idempotentRequestCache.delete(cacheKey);
+        if (entry?.requestId) {
+          this.idempotentFingerprintByRequestId.delete(entry.requestId);
+        }
+      }
+    }
+
+    for (const [requestId, cacheKey] of this.idempotentFingerprintByRequestId.entries()) {
+      if (!this.idempotentRequestCache.has(cacheKey)) {
+        this.idempotentFingerprintByRequestId.delete(requestId);
+      }
+    }
   }
 
   _finalizeIdempotentRequest(msg, requestId) {
