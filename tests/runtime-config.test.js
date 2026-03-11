@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveRuntimeConfig } from '../src/config/runtime-config.js';
+import { resolveDefaultLockDir, resolveRuntimeConfig } from '../src/config/runtime-config.js';
 
 test('resolveRuntimeConfig should throw when token is missing', () => {
   assert.throws(
@@ -28,4 +28,24 @@ test('resolveRuntimeConfig should reject non-ws protocols', () => {
       }),
     /invalid baseWsUrl protocol/i
   );
+});
+
+test('resolveDefaultLockDir should not use root directory when cwd is /', () => {
+  const lockDir = resolveDefaultLockDir({
+    env: {},
+    cwd: '/'
+  });
+  assert.notEqual(lockDir, '/.openclaw-locks');
+});
+
+test('resolveRuntimeConfig should prefer HOME default lock directory', () => {
+  const config = resolveRuntimeConfig({
+    env: {
+      OPENCLAW_WS_TOKEN: 'token',
+      OPENCLAW_BASE_WS_URL: 'wss://glanceup-pre.100credit.cn',
+      HOME: '/home/test-user'
+    },
+    pluginConfig: {}
+  });
+  assert.equal(config.lockDir, '/home/test-user/.openclaw-locks');
 });

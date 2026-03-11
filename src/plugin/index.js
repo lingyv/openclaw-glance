@@ -24,6 +24,9 @@ export async function startPluginRuntime({ runtime, pluginConfig } = {}) {
     return activeRuntime;
   }
   const config = resolveRuntimeConfig({ pluginConfig });
+  runtime?.logger?.info?.(
+    `[openclaw-glance-plugin] runtime config resolved: baseWsUrl=${config.baseWsUrl}, lockDir=${config.lockDir}`
+  );
   const lock = new ProcessLock({
     lockDir: config.lockDir,
     key: config.lockKey

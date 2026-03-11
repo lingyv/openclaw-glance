@@ -13,6 +13,7 @@ test('plugin register exposes control api and tool registrations', async () => {
   const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
   const originalRequest = BridgeRuntime.prototype.request;
   const requests = [];
+  const infoLogs = [];
 
   BridgeRuntime.prototype._connectOnce = async function mockConnect() {
     this.connected = true;
@@ -27,7 +28,10 @@ test('plugin register exposes control api and tool registrations', async () => {
     const tools = [];
     const api = {
       runtime: {
-        dispatchReply: async () => {}
+        dispatchReply: async () => {},
+        logger: {
+          info: (message) => infoLogs.push(String(message))
+        }
       },
       config: {
         plugins: {
@@ -104,6 +108,7 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(requests[7].type, 'watch.pause');
     assert.equal(requests[8].type, 'watch.activate');
     assert.equal(requests[9].type, 'watch.delete');
+    assert.equal(infoLogs.some((line) => line.includes('lockDir=') && line.includes(lockDir)), true);
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
