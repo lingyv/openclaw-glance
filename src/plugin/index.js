@@ -133,11 +133,20 @@ function buildControlApi(startupPromise) {
   };
 }
 
-function tryRegisterTool(registerTool, name, description, handler) {
+function tryRegisterTool(registerTool, name, description, parameters, handler) {
   if (typeof registerTool !== 'function') return;
+  const schema =
+    parameters || {
+      type: 'object',
+      additionalProperties: true,
+      properties: {}
+    };
+
   const def = {
     name,
     description,
+    parameters: schema,
+    inputSchema: schema,
     handler,
     execute: async (_toolCallId, params) => handler(params || {})
   };
@@ -170,20 +179,74 @@ function tryRegisterTool(registerTool, name, description, handler) {
 
 function registerControlTools(api, controlApi) {
   const registerTool = api?.registerTool || api?.runtime?.registerTool;
-  tryRegisterTool(registerTool, 'watch.query_ticker', 'Query ticker data', (args) =>
-    controlApi.queryTickerData(args || {})
+
+  tryRegisterTool(
+    registerTool,
+    'watch_query_ticker',
+    'Query ticker data',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        stock_code: { type: 'string' },
+        product_code: { type: 'string' },
+        product_type: { type: 'string' },
+        market: { type: 'string' }
+      }
+    },
+    (args) => controlApi.queryTickerData(args || {})
   );
-  tryRegisterTool(registerTool, 'watch.create', 'Create watch strategy', (args) =>
-    controlApi.createWatch(args || {})
+
+  tryRegisterTool(
+    registerTool,
+    'watch_create',
+    'Create watch strategy',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        product_code: { type: 'string' },
+        product_type: { type: 'string' },
+        operator_type: { type: 'string' },
+        operator_parameters: { type: 'object' },
+        channels: { type: 'array', items: { type: 'string' } },
+        channel_configs: { type: 'object' }
+      }
+    },
+    (args) => controlApi.createWatch(args || {})
   );
-  tryRegisterTool(registerTool, 'watch.pause', 'Pause watch strategy', (args) =>
-    controlApi.pauseWatch(args?.strategyId || args?.strategy_id)
+
+  const strategySchema = {
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      strategy_id: { type: 'string' },
+      strategyId: { type: 'string' }
+    }
+  };
+
+  tryRegisterTool(
+    registerTool,
+    'watch_pause',
+    'Pause watch strategy',
+    strategySchema,
+    (args) => controlApi.pauseWatch(args?.strategyId || args?.strategy_id)
   );
-  tryRegisterTool(registerTool, 'watch.activate', 'Activate watch strategy', (args) =>
-    controlApi.activateWatch(args?.strategyId || args?.strategy_id)
+
+  tryRegisterTool(
+    registerTool,
+    'watch_activate',
+    'Activate watch strategy',
+    strategySchema,
+    (args) => controlApi.activateWatch(args?.strategyId || args?.strategy_id)
   );
-  tryRegisterTool(registerTool, 'watch.remove', 'Delete watch strategy', (args) =>
-    controlApi.deleteWatch(args?.strategyId || args?.strategy_id)
+
+  tryRegisterTool(
+    registerTool,
+    'watch_remove',
+    'Delete watch strategy',
+    strategySchema,
+    (args) => controlApi.deleteWatch(args?.strategyId || args?.strategy_id)
   );
 }
 
@@ -194,11 +257,9 @@ const plugin = {
   register(api) {
     const pluginConfig =
       api?.config?.plugins?.entries?.['openclaw-glance-plugin']?.config ||
-      api?.config?.plugins?.entries?.openclawGlancePlugin?.config ||
-      api?.config?.plugins?.['openclaw-glance-plugin']?.config ||
-      api?.config?.plugins?.openclawGlancePlugin?.config ||
       api?.config?.plugins?.entries?.['glance-bridge']?.config ||
       api?.config?.plugins?.entries?.glanceBridge?.config ||
+      api?.config?.plugins?.['openclaw-glance-plugin']?.config ||
       api?.config?.plugins?.['glance-bridge']?.config ||
       api?.config?.plugins?.glanceBridge?.config ||
       {};

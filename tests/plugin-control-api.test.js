@@ -68,11 +68,11 @@ test('plugin register exposes control api and tool registrations', async () => {
     await api.glanceBridge.deleteWatch('s-1');
 
     assert.deepEqual(tools.sort(), [
-      'watch.activate',
-      'watch.create',
-      'watch.pause',
-      'watch.query_ticker',
-      'watch.remove'
+      'watch_activate',
+      'watch_create',
+      'watch_pause',
+      'watch_query_ticker',
+      'watch_remove'
     ]);
 
     assert.equal(requests[0].type, 'ticker.query');
@@ -130,10 +130,10 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     plugin.register(api);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const queryDef = toolDefs.find((x) => x.def?.name === 'watch.query_ticker');
-    assert.ok(queryDef, 'watch.query_ticker tool should be registered');
+    const queryDef = toolDefs.find((x) => x.def?.name === 'watch_query_ticker');
+    assert.ok(queryDef, 'watch_query_ticker tool should be registered');
     assert.equal(typeof queryDef.def.execute, 'function');
-    assert.equal(queryDef.meta?.name, 'watch.query_ticker');
+    assert.equal(queryDef.meta?.name, 'watch_query_ticker');
 
     await queryDef.def.execute('tool-call-1', {
       stockCode: '00700',

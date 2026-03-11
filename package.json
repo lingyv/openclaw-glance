@@ -1,11 +1,13 @@
 {
   "name": "openclaw-glance-plugin",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "OpenClaw plugin client for ticker-monitor openclaw-bridge",
   "type": "module",
   "main": "index.js",
   "openclaw": {
-    "extensions": ["./index.js"]
+    "extensions": [
+      "./index.js"
+    ]
   },
   "exports": {
     ".": "./index.js",
