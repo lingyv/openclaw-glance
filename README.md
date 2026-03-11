@@ -16,13 +16,15 @@
 - 用户修改状态：调用 `activate` / `pause`
 - 用户删除盯盘：调用 `remove`
 - 需要接收触发消息：由插件后台运行时持续接收
+- 需要主动通过邮件、短信、电话发送通知时
 
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
-- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ping`
-- 支持渠道：`openclaw` / `email` / `call`
+- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `notify.send` / `ping`
+- 支持渠道：`openclaw` / `email` / `call` / `sms` / `dingtalk`
 - 订阅推送：`watch.triggered`
+- 主动发起通知结果推送：`notify.sent`
 - 自动重连 + 心跳
 - 严格单活（同 token 只允许一个活跃进程）
 - 断线请求排队（可配置），重连后自动冲刷
@@ -98,7 +100,7 @@ await adapter.submitWatchDemand({
   productType: 'hk_stock',
   condition: 'price >= threshold',
   variables: { threshold: 8.97 },
-  channels: ['openclaw', 'email', 'call'], // openclaw 必传，email/call 可选
+  channels: ['openclaw', 'email', 'call', 'sms', 'dingtalk'], // openclaw 必传，其它可选
   emailConfig: {
     to_address: 'demo@example.com',
     template_id: 4
@@ -106,9 +108,34 @@ await adapter.submitWatchDemand({
   callConfig: {
     phone: '13800138000',
     customer_name: 'Demo'
+  },
+  smsConfig: {
+    receiver: '13800138000',
+    template_id: 90010,
+    content: '测试短信'
+  },
+  dingtalkConfig: {
+    cas_id: 'user.dingtalk',
+    template_id: 3,
+    msg_type: 'text',
+    content: '测试钉钉消息'
   }
 });
 ```
+
+## 插件工具（OpenClaw 调用）
+
+- `watch_query_ticker`
+- `watch_create`
+- `watch_pause`
+- `watch_activate`
+- `watch_remove`
+- `notify_sms`
+- `notify_call`
+- `notify_email`
+- `notify_dingtalk`
+
+`notify_*` 工具走 bridge `notify.send` 直连通知链路，发送完成后客户端会收到 `notify.sent` 回执事件。
 
 ## 客户端事件
 

@@ -1,6 +1,6 @@
 ---
 name: glance-watch
-description: 智能盯盘插件，用于监控A股、港股、比特币等金融市场行情并在条件触发时发送提醒。当用户要求盯盘、监控价格、设置提醒时自动触发，例如"帮我盯着比特币"、监控某只股票、涨跌幅提醒等。
+description: 智能盯盘插件，用于监控A股、港股、比特币等金融市场行情并在条件触发时发送提醒。当用户要求盯盘、监控价格、设置提醒、需要通过邮件/电话/短信/钉钉发起通知时自动触发，例如"帮我盯着比特币"、监控某只股票、涨跌幅提醒、短信通知我等。
 ---
 
 # Glance Watch 智能盯盘
@@ -18,8 +18,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
    - `variables`: 变量值
 
 3. **通过已安装运行时提交盯盘请求**（长连接由宿主运行时维护）
-
 4. **用户要求“查行情/看当前价格/报价”时**，优先调用 `queryTickerData` 获取实时数据，再决定是否创建盯盘策略。
+5. **用户要求“发短信/打电话/发邮件”时**。
 
 ## 调用契约（必须遵循）
 
@@ -32,12 +32,17 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - `watch.pause`
 - `watch.activate`
 - `watch.remove`
+- `notify.sms`
+- `notify.call`
+- `notify.email`
+- `notify.dingtalk`
 
 ### 调用顺序
 
 1. 用户是“查行情”意图：先调用 `watch.query_ticker`
 2. 用户是“盯盘创建”意图：先补齐参数后调用 `watch.create`
 3. 用户是“暂停/恢复/删除”意图：分别调用 `watch.pause` / `watch.activate` / `watch.remove`
+4. 用户是“立即发短信/打电话/发邮件/发钉钉”意图：调用 `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
 
 禁止跳步：创建盯盘前若缺关键字段必须先追问。
 
@@ -69,6 +74,12 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - `channels`（默认至少包含 `openclaw`）
 - 对应渠道配置（`emailConfig/callConfig/smsConfig`）
 
+渠道参数要求（必须）：
+- 只要 `channels` 包含 `email`，必须提供 `emailConfig` 且包含 `to_address`
+- 只要 `channels` 包含 `call`，必须提供 `callConfig` 且包含 `phone`
+- 只要 `channels` 包含 `sms`，必须提供 `smsConfig` 且包含 `receiver`（或 `phone`）
+- 只要 `channels` 包含 `dingtalk`，必须提供 `dingtalkConfig` 且包含 `cas_id`
+
 成功判定：
 - 返回 `success = true`
 
@@ -86,6 +97,23 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 失败处理：
 - 返回失败原因并提示用户确认策略 ID
+
+#### `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
+
+参数：
+- `notify.sms`：必须提供手机号（`receiver` 或 `phone`）
+- `notify.call`：必须提供 `phone`
+- `notify.email`：必须提供 `to_address`
+- `notify.dingtalk`：必须提供 `cas_id`
+
+成功判定：
+- 返回 `success = true`
+
+失败处理：
+- 明确返回失败原因，不要静默重试
+
+回执说明：
+- 直连通知发送完成后，客户端会收到 `notify.sent` 事件（`overall_status/success_count/failed_count/deliveries`）
 
 ## 调用判定规则
 
@@ -185,15 +213,21 @@ await runtime.queryTickerData({
 
 ## 渠道参数填写
 
-`openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms) 、钉钉(dingtalk) 通知提醒，则只需要传入`openclaw` 渠道。
+`openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms)、钉钉(dingtalk)通知提醒，则只需要传入`openclaw`渠道。
+
+但一旦用户选择了某个通知渠道，其配置参数必须完整填写：
+- 选择 `email` 必须提供 `emailConfig.to_address`
+- 选择 `call` 必须提供 `callConfig.phone`
+- 选择 `sms` 必须提供 `smsConfig.receiver`（或 `phone`）
+- 选择 `dingtalk` 必须提供 `dingtalkConfig.cas_id`
 
 ### email 参数（emailConfig）
-- `to_address`：收件人邮箱（必填）
+- `to_address`：收件人邮箱（必填，缺失不可创建/不可发送）
 - `template_id`：邮件模板 ID（必填，默认为4，不需要修改）
-- `template_params`：模板变量（可选）
+- `template_params`：模板变量
 - `title`: 收到邮件的标题
 - `product_name`: 产品名称 
-- `content`: 消息内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+- `content`: 消息内容
 示例：
 ```javascript
 emailConfig: {
@@ -209,9 +243,9 @@ emailConfig: {
 用户收到的是一封title为"监控提醒",内容为"测试消息1"的一封邮件
 
 ### call 参数（callConfig）
-- `phone`：手机号（必填）
-- `customer_name`：客户名称（可选）
-- `condition`：外呼内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+- `phone`：手机号（必填，缺失不可创建/不可发送）
+- `customer_name`：客户名称
+- `condition`：外呼内容
 
 示例：
 ```javascript
@@ -225,9 +259,9 @@ callConfig: {
 
 
 ### sms 参数（smsConfig）
-- `receiver`：手机号（必须是纯数字）
+- `receiver`：手机号（必填，必须是纯数字；缺失不可创建/不可发送）
 - `template_id`：短信模板 ID（可选，默认 90010，不需要修改）
-- `content`：短信变量内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+- `content`：短信变量内容
 
 示例：
 ```javascript
@@ -241,10 +275,10 @@ smsConfig: {
 
 
 ### 钉钉 参数（dingtalkConfig）
-- `cas_id`：钉钉用户ID
+- `cas_id`：钉钉用户ID（必填，缺失不可创建/不可发送）
 - `template_id`：钉钉模板 ID（可选，默认 3，不需要修改）
 - `msg_type`: 消息类型：text/markdown，默认 text
-- `content`：消息内容（可选，默认用触发消息，如不需要自定义可使用默认消息）
+- `content`：消息内容
 
 示例：
 ```javascript
@@ -304,7 +338,7 @@ variables: { threshold: 420, product_name: '腾讯控股' }
 当监控触发时:
 1. 解析 `market_data` 获取价格、涨跌幅等信息
 2. 发送提醒到用户当前对话的渠道（群聊/私聊）
-3. `openclaw` 渠道必传，`email/call/sms` 可按需附加
+3. `openclaw` 渠道必传，`email/call/sms/dingtalk` 可按需附加
 4. 根据触发消息构建友好的提醒文案
 
 如果创建失败（`watch.create.result.success=false`）：
