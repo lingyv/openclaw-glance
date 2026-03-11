@@ -211,7 +211,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 3. `operator_parameters.condition` 与 `operator_parameters.variables` 是否都存在
 4. `channels` 是否与 `channel_configs` 一一对应（选了哪个渠道就必须有哪个配置）
 5. 所有配置是否为对象而非 JSON 字符串
-6. 是否未手动传 `request_id`（由插件自动生成与复用）
+6. `request_id` 默认不手动传；由插件自动生成并在同 payload 重试时复用。仅当宿主框架明确要求外部指定时才传，并且重试必须保持不变
 
 ### 买卖意图与条件方向
 
