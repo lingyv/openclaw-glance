@@ -75,10 +75,10 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - 对应渠道配置（`emailConfig/callConfig/smsConfig`）
 
 渠道参数要求（必须）：
-- 只要 `channels` 包含 `email`，必须提供 `emailConfig` 且包含 `to_address`
-- 只要 `channels` 包含 `call`，必须提供 `callConfig` 且包含 `phone`
-- 只要 `channels` 包含 `sms`，必须提供 `smsConfig` 且包含 `receiver`（或 `phone`）
-- 只要 `channels` 包含 `dingtalk`，必须提供 `dingtalkConfig` 且包含 `cas_id`
+- 只要 `channels` 包含 `email`，必须提供 `emailConfig.to_address/template_id/title/content`
+- 只要 `channels` 包含 `call`，必须提供 `callConfig.phone/customer_name/condition`
+- 只要 `channels` 包含 `sms`，必须提供 `smsConfig.receiver(或phone)/template_id/content`
+- 只要 `channels` 包含 `dingtalk`，必须提供 `dingtalkConfig.cas_id/template_id/msg_type/content`
 
 成功判定：
 - 返回 `success = true`
@@ -101,10 +101,10 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 #### `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
 
 参数：
-- `notify.sms`：必须提供手机号（`receiver` 或 `phone`）
-- `notify.call`：必须提供 `phone`
-- `notify.email`：必须提供 `to_address`
-- `notify.dingtalk`：必须提供 `cas_id`
+- `notify.sms`：必须提供 `receiver`（或 `phone`）、`template_id`、`content`
+- `notify.call`：必须提供 `phone`、`customer_name`、`condition`
+- `notify.email`：必须提供 `to_address`、`template_id`、`title`、`content`
+- `notify.dingtalk`：必须提供 `cas_id`、`template_id`、`msg_type`、`content`
 
 成功判定：
 - 返回 `success = true`
@@ -216,18 +216,17 @@ await runtime.queryTickerData({
 `openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms)、钉钉(dingtalk)通知提醒，则只需要传入`openclaw`渠道。
 
 但一旦用户选择了某个通知渠道，其配置参数必须完整填写：
-- 选择 `email` 必须提供 `emailConfig.to_address`
-- 选择 `call` 必须提供 `callConfig.phone`
-- 选择 `sms` 必须提供 `smsConfig.receiver`（或 `phone`）
-- 选择 `dingtalk` 必须提供 `dingtalkConfig.cas_id`
+- 选择 `email` 必须提供 `emailConfig.to_address/template_id/title/content`
+- 选择 `call` 必须提供 `callConfig.phone/customer_name/condition`
+- 选择 `sms` 必须提供 `smsConfig.receiver(或phone)/template_id/content`
+- 选择 `dingtalk` 必须提供 `dingtalkConfig.cas_id/template_id/msg_type/content`
 
 ### email 参数（emailConfig）
 - `to_address`：收件人邮箱（必填，缺失不可创建/不可发送）
 - `template_id`：邮件模板 ID（必填，默认为4，不需要修改）
 - `template_params`：模板变量
-- `title`: 收到邮件的标题
-- `product_name`: 产品名称 
-- `content`: 消息内容
+- `title`: 收到邮件的标题（必填）
+- `content`: 消息内容（必填）
 示例：
 ```javascript
 emailConfig: {
@@ -235,7 +234,6 @@ emailConfig: {
   template_id: 4,
   template_params: {
     title: '监控提醒',
-    product_name: '比特币',
     content: '测试消息1'
   }
 }
@@ -244,8 +242,8 @@ emailConfig: {
 
 ### call 参数（callConfig）
 - `phone`：手机号（必填，缺失不可创建/不可发送）
-- `customer_name`：客户名称
-- `condition`：外呼内容
+- `customer_name`：客户名称（必填）
+- `condition`：外呼内容（必填）
 
 示例：
 ```javascript
@@ -260,8 +258,8 @@ callConfig: {
 
 ### sms 参数（smsConfig）
 - `receiver`：手机号（必填，必须是纯数字；缺失不可创建/不可发送）
-- `template_id`：短信模板 ID（可选，默认 90010，不需要修改）
-- `content`：短信变量内容
+- `template_id`：短信模板 ID（必填，默认 90010，不需要修改）
+- `content`：短信变量内容（必填）
 
 示例：
 ```javascript
@@ -276,9 +274,9 @@ smsConfig: {
 
 ### 钉钉 参数（dingtalkConfig）
 - `cas_id`：钉钉用户ID（必填，缺失不可创建/不可发送）
-- `template_id`：钉钉模板 ID（可选，默认 3，不需要修改）
-- `msg_type`: 消息类型：text/markdown，默认 text
-- `content`：消息内容
+- `template_id`：钉钉模板 ID（必填，默认 3，不需要修改）
+- `msg_type`: 消息类型（必填）：`text`/`markdown`
+- `content`：消息内容（必填）
 
 示例：
 ```javascript
@@ -344,6 +342,12 @@ variables: { threshold: 420, product_name: '腾讯控股' }
 如果创建失败（`watch.create.result.success=false`）：
 - 明确返回失败原因给用户
 - 引导用户补充或修正参数后再次创建
+
+如果直连通知失败（`notify.send.result.success=false`）：
+- 优先读取并返回 `code/error/hint`，不要只说“通知失败”
+- 若 `code=MISSING_REQUIRED_FIELD`，直接告诉用户缺失字段并让其补齐
+- 若 `code=UNSUPPORTED_MESSAGE_TYPE`，提示“bridge 版本不支持 notify.send，需要升级并重启”
+- 若 `code=UPSTREAM_UNAVAILABLE`，提示“notification 服务不可用或超时，请稍后重试”
 
 ## 相关资源
 
