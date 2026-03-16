@@ -80,6 +80,38 @@ test('queryTickerData sends ticker.query request', async () => {
   await client.close();
 });
 
+test('listWatches sends watch.list request', async () => {
+  const client = buildClient({ enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  const p = client.listWatches({ status: 'active', product_code: '00700' });
+  const req = sent[0];
+  assert.equal(req.type, 'watch.list');
+  assert.equal(req.payload.status, 'active');
+  assert.equal(req.payload.product_code, '00700');
+
+  client._onMessage(
+    JSON.stringify({
+      request_id: req.request_id,
+      type: 'watch.list.result',
+      success: true,
+      data: {
+        total: 1,
+        strategies: [{ strategy_id: 's1' }]
+      }
+    })
+  );
+  const resp = await p;
+  assert.equal(resp.success, true);
+  assert.equal(resp.data.total, 1);
+  await client.close();
+});
+
 test('on close should not reconnect when stopped', async () => {
   const client = buildClient({ reconnect: true });
   client.stopped = true;

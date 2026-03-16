@@ -225,6 +225,10 @@ function buildControlApi(startupPromise) {
       const runtime = await getReadyRuntime(startupPromise);
       return runtime.request('watch.pause', { strategy_id: strategyId });
     },
+    async listWatches(payload = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      return runtime.request('watch.list', payload || {});
+    },
     async activateWatch(strategyId) {
       const runtime = await getReadyRuntime(startupPromise);
       return runtime.request('watch.activate', { strategy_id: strategyId });
@@ -376,6 +380,22 @@ function registerControlTools(api, controlApi) {
       strategyId: { type: 'string' }
     }
   };
+
+  tryRegisterTool(
+    registerTool,
+    'watch_list',
+    'List watch strategies for current user',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        status: { type: 'string' },
+        product_code: { type: 'string' },
+        productCode: { type: 'string' }
+      }
+    },
+    (args) => controlApi.listWatches(args || {})
+  );
 
   tryRegisterTool(
     registerTool,

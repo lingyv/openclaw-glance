@@ -65,6 +65,7 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(typeof api.glanceBridge?.pauseWatch, 'function');
     assert.equal(typeof api.glanceBridge?.activateWatch, 'function');
     assert.equal(typeof api.glanceBridge?.deleteWatch, 'function');
+    assert.equal(typeof api.glanceBridge?.listWatches, 'function');
 
     await api.glanceBridge.queryTickerData({
       stockCode: '00700',
@@ -80,6 +81,7 @@ test('plugin register exposes control api and tool registrations', async () => {
     await api.glanceBridge.pauseWatch('s-1');
     await api.glanceBridge.activateWatch('s-1');
     await api.glanceBridge.deleteWatch('s-1');
+    await api.glanceBridge.listWatches({ status: 'active' });
 
     assert.deepEqual(tools.sort(), [
       'notify_call',
@@ -88,6 +90,7 @@ test('plugin register exposes control api and tool registrations', async () => {
       'notify_sms',
       'watch_activate',
       'watch_create',
+      'watch_list',
       'watch_pause',
       'watch_query_ticker',
       'watch_remove'
@@ -108,6 +111,8 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(requests[7].type, 'watch.pause');
     assert.equal(requests[8].type, 'watch.activate');
     assert.equal(requests[9].type, 'watch.delete');
+    assert.equal(requests[10].type, 'watch.list');
+    assert.equal(requests[10].payload.status, 'active');
     assert.equal(infoLogs.some((line) => line.includes('lockDir=') && line.includes(lockDir)), true);
   } finally {
     await stopPluginRuntime();
@@ -168,6 +173,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     assert.equal(typeof dingtalkDef.def.execute, 'function');
     const createDef = toolDefs.find((x) => x.def?.name === 'watch_create');
     assert.ok(createDef, 'watch_create tool should be registered');
+    const listDef = toolDefs.find((x) => x.def?.name === 'watch_list');
+    assert.ok(listDef, 'watch_list tool should be registered');
 
     await queryDef.def.execute('tool-call-1', {
       stockCode: '00700',
@@ -197,6 +204,9 @@ test('plugin register supports openclaw-style registerTool execute signature', a
         conversationId: 'cid_demo'
       }
     );
+    await listDef.def.execute('tool-call-4', {
+      status: 'active'
+    });
     assert.equal(calls[0]?.type, 'ticker.query');
     assert.equal(calls[1]?.type, 'notify.send');
     assert.equal(calls[1]?.payload?.channel, 'dingtalk');
@@ -206,6 +216,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
       calls[2]?.payload?.channel_configs?.openclaw?.session_key,
       'agent:main:dingtalk:group:cid_demo'
     );
+    assert.equal(calls[3]?.type, 'watch.list');
+    assert.equal(calls[3]?.payload?.status, 'active');
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;

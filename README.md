@@ -128,6 +128,7 @@ await adapter.submitWatchDemand({
 
 - `watch_query_ticker`
 - `watch_create`
+- `watch_list`
 - `watch_pause`
 - `watch_activate`
 - `watch_remove`

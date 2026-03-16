@@ -44,6 +44,11 @@ class FakeClient {
     this.calls.push(['queryTickerData', payload]);
     return { ok: true, payload };
   }
+
+  async listWatches(payload) {
+    this.calls.push(['listWatches', payload]);
+    return { ok: true, payload };
+  }
 }
 
 test('adapter maps demand into bridge payload', async () => {
@@ -193,4 +198,16 @@ test('adapter queryTickerData maps payload fields', async () => {
   assert.equal(payload.stock_code, 'BTCUSDT');
   assert.equal(payload.product_type, 'crypto');
   assert.equal(payload.market, '');
+});
+
+test('adapter listWatches delegates to client', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.listWatches({ status: 'active', product_code: 'BTCUSDT' });
+
+  const call = fake.calls.find((item) => item[0] === 'listWatches');
+  assert.ok(call, 'listWatches must be called');
+  assert.equal(call[1].status, 'active');
+  assert.equal(call[1].product_code, 'BTCUSDT');
 });

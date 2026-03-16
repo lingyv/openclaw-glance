@@ -164,6 +164,10 @@ export class OpenClawBridgeClient extends EventEmitter {
     return this._request('watch.pause', { strategy_id: strategyId });
   }
 
+  async listWatches(payload = {}) {
+    return this._request('watch.list', payload || {});
+  }
+
   async deleteWatch(strategyId) {
     return this._request('watch.delete', { strategy_id: strategyId });
   }

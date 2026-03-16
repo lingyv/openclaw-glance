@@ -150,4 +150,8 @@ export class OpenClawPluginAdapter {
   async remove(strategyId) {
     return this.client.deleteWatch(strategyId);
   }
+
+  async listWatches(params = {}) {
+    return this.client.listWatches(params || {});
+  }
 }
