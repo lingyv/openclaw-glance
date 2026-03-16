@@ -30,6 +30,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 - `watch.query_ticker`
 - `watch.create`
+- `watch.list`
 - `watch.pause`
 - `watch.activate`
 - `watch.remove`
@@ -43,7 +44,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 1. 用户是“查行情”意图：先调用 `watch.query_ticker`
 2. 用户是“盯盘创建”意图：先补齐参数后调用 `watch.create`
 3. 用户是“暂停/恢复/删除”意图：分别调用 `watch.pause` / `watch.activate` / `watch.remove`
-4. 用户是“立即发短信/打电话/发邮件/发钉钉”意图：调用 `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
+4. 用户是“查看策略/查看我的策略/看 active 或 paused 或 completed 策略”意图：调用 `watch.list`
+5. 用户是“立即发短信/打电话/发邮件/发钉钉”意图：调用 `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
 
 禁止跳步：创建盯盘前若缺关键字段必须先追问。
 
@@ -145,6 +147,24 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 失败处理：
 - 返回失败原因并提示用户确认策略 ID
+
+#### `watch.list`
+
+参数（可选）：
+- `status`：策略状态过滤。可传 `active` / `paused` / `completed` / `failed` / `expired`；不传表示查询该用户全部策略
+- `product_code`（或 `productCode`）：按标的代码过滤
+
+成功判定：
+- 返回 `success = true`
+- `data.total` 为命中策略数，`data.strategies` 为策略列表
+
+失败处理：
+- 返回失败原因，不要静默重试
+- 若筛选条件为空结果，明确告知“当前条件下没有策略”
+
+安全约束（必须）：
+- `watch.list` 只能查询当前连接用户自己的策略
+- 不要尝试通过参数传 `user_id` / `use_id` 越权查询
 
 #### `notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
 
