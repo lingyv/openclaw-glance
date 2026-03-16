@@ -56,6 +56,52 @@ async function getReadyRuntime(startupPromise) {
   return activeRuntime;
 }
 
+function pickFirstString(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function deriveOpenclawRouting({ params = {}, context = {} } = {}) {
+  const metadata = context?.event?.metadata || {};
+
+  const channel = pickFirstString(
+    params?.channel,
+    params?.source_channel,
+    metadata?.channel,
+    metadata?.channelId,
+    context?.channel,
+    context?.channelId
+  );
+  const accountId = pickFirstString(params?.account_id, context?.accountId, metadata?.accountId);
+  const sessionKey = pickFirstString(
+    params?.session_key,
+    params?.sessionKey,
+    context?.sessionKey,
+    metadata?.sessionKey
+  );
+  const conversationId = pickFirstString(
+    params?.conversation_id,
+    params?.conversationId,
+    params?.chat_id,
+    params?.chatId,
+    context?.conversationId,
+    metadata?.conversationId,
+    metadata?.chatId,
+    metadata?.groupId
+  );
+
+  const routing = {};
+  if (channel) routing.channel = channel;
+  if (accountId) routing.account_id = accountId;
+  if (sessionKey) routing.session_key = sessionKey;
+  if (conversationId) routing.conversation_id = conversationId;
+  return routing;
+}
+
 function mapDemandToCreatePayload(demand = {}) {
   const channels = Array.isArray(demand.channels)
     ? demand.channels
@@ -101,6 +147,33 @@ function mapDemandToCreatePayload(demand = {}) {
   };
 }
 
+function mergeOpenclawChannelConfig(payload = {}, context = {}) {
+  const merged = { ...(payload || {}) };
+  const channelConfigs = { ...(merged.channel_configs || {}) };
+  const openclawConfig = { ...(channelConfigs.openclaw || {}) };
+  const routing = deriveOpenclawRouting({ params: merged, context });
+
+  if (Object.keys(routing).length === 0) {
+    return merged;
+  }
+
+  channelConfigs.openclaw = {
+    ...openclawConfig,
+    ...routing
+  };
+
+  const channels = Array.isArray(merged.channels)
+    ? merged.channels
+        .filter((x) => typeof x === 'string' && x.trim())
+        .map((x) => x.trim().toLowerCase())
+    : [];
+  if (!channels.includes('openclaw')) channels.unshift('openclaw');
+
+  merged.channels = channels;
+  merged.channel_configs = channelConfigs;
+  return merged;
+}
+
 function buildControlApi(startupPromise) {
   return {
     async queryTickerData(query = {}) {
@@ -117,9 +190,10 @@ function buildControlApi(startupPromise) {
         product_type: productType
       });
     },
-    async createWatch(payload = {}) {
+    async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
-      return runtime.request('watch.create', payload);
+      const normalized = mergeOpenclawChannelConfig(payload, context);
+      return runtime.request('watch.create', normalized);
     },
     async sendNotification(input = {}) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -142,9 +216,10 @@ function buildControlApi(startupPromise) {
     async sendDingtalk(payload = {}) {
       return this.sendNotification({ channel: 'dingtalk', payload });
     },
-    async submitWatchDemand(demand = {}) {
+    async submitWatchDemand(demand = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
-      return runtime.request('watch.create', mapDemandToCreatePayload(demand));
+      const payload = mapDemandToCreatePayload(demand);
+      return runtime.request('watch.create', mergeOpenclawChannelConfig(payload, context));
     },
     async pauseWatch(strategyId) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -176,7 +251,8 @@ function tryRegisterTool(registerTool, name, description, parameters, handler) {
     parameters: schema,
     inputSchema: schema,
     handler,
-    execute: async (_toolCallId, params) => handler(params || {})
+    execute: async (_toolCallId, params, _onUpdate, context) =>
+      handler(params || {}, { context: context || {} })
   };
   const meta = {
     name,
@@ -289,7 +365,7 @@ function registerControlTools(api, controlApi) {
         channel_configs: { type: 'object' }
       }
     },
-    (args) => controlApi.createWatch(args || {})
+    (args, meta = {}) => controlApi.createWatch(args || {}, meta?.context || {})
   );
 
   const strategySchema = {

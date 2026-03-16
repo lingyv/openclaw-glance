@@ -166,6 +166,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     const dingtalkDef = toolDefs.find((x) => x.def?.name === 'notify_dingtalk');
     assert.ok(dingtalkDef, 'notify_dingtalk tool should be registered');
     assert.equal(typeof dingtalkDef.def.execute, 'function');
+    const createDef = toolDefs.find((x) => x.def?.name === 'watch_create');
+    assert.ok(createDef, 'watch_create tool should be registered');
 
     await queryDef.def.execute('tool-call-1', {
       stockCode: '00700',
@@ -176,9 +178,34 @@ test('plugin register supports openclaw-style registerTool execute signature', a
       webhook: 'https://oapi.dingtalk.com/demo',
       text: 'demo'
     });
+    await createDef.def.execute(
+      'tool-call-3',
+      {
+        product_code: 'BTCUSDT',
+        product_type: 'crypto',
+        operator_type: 'rule',
+        operator_parameters: {
+          condition: 'price >= threshold',
+          variables: { threshold: 100000 }
+        }
+      },
+      undefined,
+      {
+        channelId: 'dingtalk',
+        accountId: 'default',
+        sessionKey: 'agent:main:dingtalk:group:cid_demo',
+        conversationId: 'cid_demo'
+      }
+    );
     assert.equal(calls[0]?.type, 'ticker.query');
     assert.equal(calls[1]?.type, 'notify.send');
     assert.equal(calls[1]?.payload?.channel, 'dingtalk');
+    assert.equal(calls[2]?.type, 'watch.create');
+    assert.equal(calls[2]?.payload?.channel_configs?.openclaw?.channel, 'dingtalk');
+    assert.equal(
+      calls[2]?.payload?.channel_configs?.openclaw?.session_key,
+      'agent:main:dingtalk:group:cid_demo'
+    );
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
