@@ -208,6 +208,11 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 回执说明：
 - 直连通知发送完成后，客户端会收到 `notify.sent` 事件（`overall_status/success_count/failed_count/deliveries`）
 
+离线补发识别（`watch.triggered`）：
+- 若事件包含 `delivery_mode = "offline_replay"` 或 `replayed = true`，表示这是用户离线期间触发后补发的消息
+- `trigger_time` 表示原始触发时间，`replayed_at` 表示补发时间
+- 向用户描述时应明确区分：例如“这条是离线期间触发，现已补发到当前会话”
+
 ## 调用判定规则
 
 只有在用户明确表达以下意图时调用插件：
