@@ -23,6 +23,7 @@
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
 - 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `notify.send` / `ping`
 - 支持渠道：`openclaw` / `email` / `call` / `sms` / `dingtalk`
+  - 建议在 `channel_configs.openclaw` 中携带路由字段（如 `channel`、`session_key`、`account_id`、`conversation_id`），便于触发后回推到正确会话
 - 订阅推送：`watch.triggered`
 - 主动发起通知结果推送：`notify.sent`
 - 自动重连 + 心跳

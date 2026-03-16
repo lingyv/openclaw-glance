@@ -42,7 +42,16 @@ test('startPluginRuntime routes watch.triggered to openclaw dispatchReply', asyn
     active._onMessage(
       JSON.stringify({
         type: 'watch.triggered',
-        payload: { message: 'trigger content', strategy_id: 's-001' }
+        payload: {
+          message: 'trigger content',
+          strategy_id: 's-001',
+          channel_configs: {
+            openclaw: {
+              channel: 'dingtalk',
+              session_key: 'agent:main:dingtalk:group:cid_demo'
+            }
+          }
+        }
       })
     );
 
@@ -50,6 +59,8 @@ test('startPluginRuntime routes watch.triggered to openclaw dispatchReply', asyn
     assert.equal(dispatched?.text, 'trigger content');
     assert.equal(dispatched?.metadata?.source, 'watch.triggered');
     assert.equal(dispatched?.metadata?.event?.payload?.strategy_id, 's-001');
+    assert.equal(dispatched?.channel, 'dingtalk');
+    assert.equal(dispatched?.sessionKey, 'agent:main:dingtalk:group:cid_demo');
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
