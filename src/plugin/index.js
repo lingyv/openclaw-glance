@@ -1,6 +1,10 @@
-import { resolveRuntimeConfig } from '../config/runtime-config.js';
-import { pickFirstString, extractOpenclawRoutingFromRecord } from '../openclawRouting.js';
+import { resolveRuntimeConfig, resolveContactsStorePath } from '../config/runtime-config.js';
+import { extractOpenclawRoutingFromRecord, deriveOpenclawRouting } from '../openclawRouting.js';
 import { BridgeRuntime } from '../runtime/BridgeRuntime.js';
+import {
+  mergeAndPersistNotifyContacts,
+  mergeAndPersistWatchContacts
+} from './watch-notify-contacts.js';
 import { PluginDispatcher } from '../runtime/dispatchers/PluginDispatcher.js';
 import { ProcessLock } from '../runtime/lock/ProcessLock.js';
 
@@ -55,53 +59,6 @@ async function getReadyRuntime(startupPromise) {
     throw new Error('plugin runtime is not active');
   }
   return activeRuntime;
-}
-
-function deriveOpenclawRouting({ params = {}, context = {} } = {}) {
-  const metadata = context?.event?.metadata || {};
-  const routing = extractOpenclawRoutingFromRecord(params || {});
-
-  if (!routing.channel) {
-    const channel = pickFirstString(
-      params?.source_channel,
-      metadata?.channel,
-      metadata?.channelId,
-      context?.channel,
-      context?.channelId
-    );
-    if (channel) routing.channel = channel;
-  }
-  if (!routing.account_id) {
-    const account_id = pickFirstString(
-      params?.account_id,
-      context?.accountId,
-      metadata?.accountId
-    );
-    if (account_id) routing.account_id = account_id;
-  }
-  if (!routing.session_key) {
-    const session_key = pickFirstString(
-      params?.session_key,
-      params?.sessionKey,
-      context?.sessionKey,
-      metadata?.sessionKey
-    );
-    if (session_key) routing.session_key = session_key;
-  }
-  if (!routing.conversation_id) {
-    const conversation_id = pickFirstString(
-      params?.conversation_id,
-      params?.conversationId,
-      params?.chat_id,
-      params?.chatId,
-      context?.conversationId,
-      metadata?.conversationId,
-      metadata?.chatId,
-      metadata?.groupId
-    );
-    if (conversation_id) routing.conversation_id = conversation_id;
-  }
-  return routing;
 }
 
 function mapDemandToCreatePayload(demand = {}) {
@@ -188,7 +145,7 @@ function mergeOpenclawChannelConfig(payload = {}, context = {}) {
   return merged;
 }
 
-function buildControlApi(startupPromise) {
+function buildControlApi(startupPromise, contactsStorePath) {
   return {
     async queryTickerData(query = {}) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -207,33 +164,58 @@ function buildControlApi(startupPromise) {
     async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
       const normalized = mergeOpenclawChannelConfig(payload, context);
-      return runtime.request('watch.create', normalized);
+      const filled = await mergeAndPersistWatchContacts(
+        contactsStorePath,
+        normalized,
+        context
+      );
+      return runtime.request('watch.create', filled);
     },
-    async sendNotification(input = {}) {
+    async sendNotification(input = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
-      const channel = input.channel;
+      const ch = String(input.channel ?? '')
+        .trim()
+        .toLowerCase();
+      const allowed = new Set(['sms', 'email', 'call', 'dingtalk']);
+      if (!ch || !allowed.has(ch)) {
+        throw new Error(
+          'notify.send requires input.channel to be one of: sms, email, call, dingtalk'
+        );
+      }
       const payload = { ...(input.payload || {}) };
+      const merged = await mergeAndPersistNotifyContacts(
+        contactsStorePath,
+        ch,
+        payload,
+        context
+      );
       return runtime.request('notify.send', {
-        ...payload,
-        channel
+        ...merged,
+        channel: ch
       });
     },
-    async sendSms(payload = {}) {
-      return this.sendNotification({ channel: 'sms', payload });
+    async sendSms(payload = {}, context = {}) {
+      return this.sendNotification({ channel: 'sms', payload }, context);
     },
-    async sendCall(payload = {}) {
-      return this.sendNotification({ channel: 'call', payload });
+    async sendCall(payload = {}, context = {}) {
+      return this.sendNotification({ channel: 'call', payload }, context);
     },
-    async sendEmail(payload = {}) {
-      return this.sendNotification({ channel: 'email', payload });
+    async sendEmail(payload = {}, context = {}) {
+      return this.sendNotification({ channel: 'email', payload }, context);
     },
-    async sendDingtalk(payload = {}) {
-      return this.sendNotification({ channel: 'dingtalk', payload });
+    async sendDingtalk(payload = {}, context = {}) {
+      return this.sendNotification({ channel: 'dingtalk', payload }, context);
     },
     async submitWatchDemand(demand = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
       const payload = mapDemandToCreatePayload(demand);
-      return runtime.request('watch.create', mergeOpenclawChannelConfig(payload, context));
+      const normalized = mergeOpenclawChannelConfig(payload, context);
+      const filled = await mergeAndPersistWatchContacts(
+        contactsStorePath,
+        normalized,
+        context
+      );
+      return runtime.request('watch.create', filled);
     },
     async pauseWatch(strategyId) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -328,7 +310,7 @@ function registerControlTools(api, controlApi) {
       additionalProperties: true,
       properties: {}
     },
-    (args) => controlApi.sendSms(args || {})
+    (args, meta = {}) => controlApi.sendSms(args || {}, meta?.context || {})
   );
 
   tryRegisterTool(
@@ -340,7 +322,7 @@ function registerControlTools(api, controlApi) {
       additionalProperties: true,
       properties: {}
     },
-    (args) => controlApi.sendCall(args || {})
+    (args, meta = {}) => controlApi.sendCall(args || {}, meta?.context || {})
   );
 
   tryRegisterTool(
@@ -352,7 +334,7 @@ function registerControlTools(api, controlApi) {
       additionalProperties: true,
       properties: {}
     },
-    (args) => controlApi.sendEmail(args || {})
+    (args, meta = {}) => controlApi.sendEmail(args || {}, meta?.context || {})
   );
 
   tryRegisterTool(
@@ -364,7 +346,7 @@ function registerControlTools(api, controlApi) {
       additionalProperties: true,
       properties: {}
     },
-    (args) => controlApi.sendDingtalk(args || {})
+    (args, meta = {}) => controlApi.sendDingtalk(args || {}, meta?.context || {})
   );
 
   tryRegisterTool(
@@ -450,6 +432,8 @@ const plugin = {
       api?.config?.plugins?.glanceBridge?.config ||
       {};
 
+    const contactsStorePath = resolveContactsStorePath({ pluginConfig });
+
     const startupPromise = startPluginRuntime({
       runtime: api?.runtime,
       pluginConfig
@@ -458,7 +442,7 @@ const plugin = {
       api?.runtime?.logger?.error?.(`[openclaw-glance-plugin] runtime start failed: ${err.message}`);
     });
 
-    const controlApi = buildControlApi(startupPromise);
+    const controlApi = buildControlApi(startupPromise, contactsStorePath);
     api.glanceBridge = controlApi;
     registerControlTools(api, controlApi);
 

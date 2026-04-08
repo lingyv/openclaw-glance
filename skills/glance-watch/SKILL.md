@@ -346,11 +346,34 @@ await runtime.queryTickerData({
 
 `openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms)、钉钉(dingtalk)通知提醒，则只需要传入`openclaw`渠道。
 
-但一旦用户选择了某个通知渠道，其配置参数必须完整填写：
-- 选择 `email` 必须提供 `channel_configs.email.to_address/template_id/title/content`
-- 选择 `call` 必须提供 `channel_configs.call.phone/customer_name/condition`
-- 选择 `sms` 必须提供 `channel_configs.sms.receiver(或phone)/template_id/content`
-- 选择 `dingtalk` 必须提供 `channel_configs.dingtalk.cas_id/template_id/msg_type/content`
+### 插件侧联系人记忆与自动补全（openclaw-plugin-node）
+
+宿主在调用 `watch_create`、`notify_*` 等工具时，应把**当前发送者上下文**传入 `context`（与 `openclaw` 路由合并所用上下文一致）。与 OpenClaw `buildSenderContext` 对齐时，推荐优先使用嵌套对象 **`context.senderContext`**（或顶层同名字段），例如：
+
+- `senderContext.channel`（或 `channel` / `channelId`）：来源渠道（钉钉建议为 `dingtalk`）
+- `senderContext.senderId`（或顶层 `senderId` / `sender_id`）：发送者唯一标识；钉钉下通常与 `cas_id` 一致
+- 仍兼容：`senderDingtalkId`、`event.metadata.senderDingtalkId` 等历史字段
+- `senderContext.senderName` / `senderName` / `displayName`：展示名（可用于外呼 `customer_name` 兜底）
+
+插件内等价解析函数为 `extractSenderContext`；`buildSenderContext` 为其别名（单参 `buildSenderContext(context)` 即可）。
+
+插件会在发 `watch.create` / `notify.send` 前：
+
+1. 按 `channel:sender_id` 读写独立 JSON（默认路径：`~/.openclaw/workspace/memory/watch-notify-contacts.json`，可通过插件配置 `contactsStorePath` 或环境变量 `OPENCLAW_CONTACTS_STORE_PATH` 覆盖）。
+2. 对 **sms / dingtalk / email / call** 缺省字段用该发送者已保存的默认值补全。
+3. **钉钉**：若当前会话渠道为 `dingtalk` 且未提供 `cas_id`，则用当前发送者 ID 作为默认 `cas_id` 并写入记忆。
+4. **外呼**：`customer_name` 优先用户本轮输入 → 记忆 → 发送者展示名。
+
+若补全后仍缺必填项（如从未提供过手机号），bridge 仍会报错，此时应追问用户；用户一旦提供有效值，插件会更新记忆，后续同发送者无需重复填写。
+
+向用户确认时**避免完整回显手机号**，可用尾号提示。
+
+用户选择了某个通知渠道时，**最终**发往 bridge 的 payload 仍须满足各渠道必填项（插件会先按上文规则补全；补全后仍缺的，由 Agent 追问用户补齐）：
+
+- 选择 `email`：`channel_configs.email.to_address/template_id/title/content`
+- 选择 `call`：`channel_configs.call.phone/customer_name/condition`
+- 选择 `sms`：`channel_configs.sms.receiver(或phone)/template_id/content`
+- 选择 `dingtalk`：`channel_configs.dingtalk.cas_id/template_id/msg_type/content`
 
 ### email 参数（channel_configs.email）
 - `to_address`：收件人邮箱（必填，缺失不可创建/不可发送）

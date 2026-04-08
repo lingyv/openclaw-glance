@@ -13,6 +13,10 @@
       },
       "lockDir": {
         "type": "string"
+      },
+      "contactsStorePath": {
+        "type": "string",
+        "description": "Path to watch-notify-contacts.json (sender defaults for sms/dingtalk/email/call)"
       }
     },
     "required": ["token"]

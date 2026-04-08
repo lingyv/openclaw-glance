@@ -40,7 +40,8 @@ test('plugin register exposes control api and tool registrations', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10092',
                 token: 'unit-token-ctrl',
-                lockDir
+                lockDir,
+                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
               }
             }
           }
@@ -149,7 +150,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10093',
                 token: 'unit-token-tool',
-                lockDir
+                lockDir,
+                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
               }
             }
           }
@@ -252,7 +254,8 @@ test('notify wrappers must not allow payload to override channel', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10094',
                 token: 'unit-token-wrapper',
-                lockDir
+                lockDir,
+                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
               }
             }
           }
@@ -275,5 +278,51 @@ test('notify wrappers must not allow payload to override channel', async () => {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
     BridgeRuntime.prototype.request = originalRequest;
+  }
+});
+
+test('sendNotification rejects missing or invalid channel', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-notify-ch-'));
+  const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
+  BridgeRuntime.prototype._connectOnce = async function mockConnect() {
+    this.connected = true;
+    this.emit('connected');
+  };
+
+  try {
+    const api = {
+      runtime: { dispatchReply: async () => {} },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-glance-plugin': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10095',
+                token: 'unit-token-notify-ch',
+                lockDir,
+                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
+              }
+            }
+          }
+        }
+      },
+      registerTool() {},
+      onShutdown() {}
+    };
+
+    plugin.register(api);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await assert.rejects(
+      () => api.glanceBridge.sendNotification({ payload: { content: 'x' } }),
+      /requires input\.channel/i
+    );
+    await assert.rejects(
+      () => api.glanceBridge.sendNotification({ channel: 'wecom', payload: {} }),
+      /requires input\.channel/i
+    );
+  } finally {
+    await stopPluginRuntime();
+    BridgeRuntime.prototype._connectOnce = originalConnectOnce;
   }
 });

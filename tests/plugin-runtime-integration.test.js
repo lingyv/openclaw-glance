@@ -32,7 +32,8 @@ test('startPluginRuntime routes watch.triggered to openclaw dispatchReply', asyn
       pluginConfig: {
         baseWsUrl: 'ws://127.0.0.1:10080',
         token: 'unit-token-1',
-        lockDir
+        lockDir,
+        contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
       }
     });
 
@@ -88,7 +89,8 @@ test('plugin.register wires startup and onShutdown cleanup', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10081',
                 token: 'unit-token-2',
-                lockDir
+                lockDir,
+                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
               }
             }
           }
