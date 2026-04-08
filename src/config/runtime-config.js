@@ -2,19 +2,6 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
-export function resolveContactsStorePath({ env = process.env, pluginConfig = {} } = {}) {
-  const explicit = pick(
-    pluginConfig,
-    ['contactsStorePath', 'contacts_store_path'],
-    pick(env, ['OPENCLAW_CONTACTS_STORE_PATH'])
-  );
-  if (explicit) {
-    return String(explicit).trim();
-  }
-  const homeDir = pick(env, ['HOME', 'USERPROFILE']) || os.homedir();
-  return path.join(String(homeDir), '.openclaw', 'workspace', 'memory', 'watch-notify-contacts.json');
-}
-
 import { ProcessLock } from '../runtime/lock/ProcessLock.js';
 
 const DEFAULT_BASE_WS_URL = 'wss://glanceup-pre.100credit.cn';
@@ -78,7 +65,6 @@ export function resolveRuntimeConfig({ env = process.env, pluginConfig = {} } = 
     baseWsUrl,
     token,
     lockDir,
-    lockKey,
-    contactsStorePath: resolveContactsStorePath({ env, pluginConfig })
+    lockKey
   };
 }

@@ -40,8 +40,7 @@ test('plugin register exposes control api and tool registrations', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10092',
                 token: 'unit-token-ctrl',
-                lockDir,
-                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
+                lockDir
               }
             }
           }
@@ -150,8 +149,7 @@ test('plugin register supports openclaw-style registerTool execute signature', a
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10093',
                 token: 'unit-token-tool',
-                lockDir,
-                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
+                lockDir
               }
             }
           }
@@ -254,8 +252,7 @@ test('notify wrappers must not allow payload to override channel', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10094',
                 token: 'unit-token-wrapper',
-                lockDir,
-                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
+                lockDir
               }
             }
           }
@@ -299,8 +296,7 @@ test('sendNotification rejects missing or invalid channel', async () => {
               config: {
                 baseWsUrl: 'ws://127.0.0.1:10095',
                 token: 'unit-token-notify-ch',
-                lockDir,
-                contactsStorePath: path.join(lockDir, 'watch-notify-contacts.json')
+                lockDir
               }
             }
           }

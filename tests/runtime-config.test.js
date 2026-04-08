@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  resolveContactsStorePath,
-  resolveDefaultLockDir,
-  resolveRuntimeConfig
-} from '../src/config/runtime-config.js';
+import { resolveDefaultLockDir, resolveRuntimeConfig } from '../src/config/runtime-config.js';
 
 test('resolveRuntimeConfig should throw when token is missing', () => {
   assert.throws(
@@ -52,25 +48,6 @@ test('resolveRuntimeConfig should prefer HOME default lock directory', () => {
     pluginConfig: {}
   });
   assert.equal(config.lockDir, '/home/test-user/.openclaw-locks');
-  assert.equal(
-    config.contactsStorePath,
-    '/home/test-user/.openclaw/workspace/memory/watch-notify-contacts.json'
-  );
-});
-
-test('resolveContactsStorePath prefers pluginConfig and env override', () => {
-  assert.equal(
-    resolveContactsStorePath({
-      pluginConfig: { contactsStorePath: '/tmp/a.json' },
-      env: {}
-    }),
-    '/tmp/a.json'
-  );
-  assert.equal(
-    resolveContactsStorePath({
-      pluginConfig: {},
-      env: { OPENCLAW_CONTACTS_STORE_PATH: '/tmp/b.json' }
-    }),
-    '/tmp/b.json'
-  );
+  assert.equal(config.baseWsUrl, 'wss://glanceup-pre.100credit.cn');
+  assert.equal(config.token, 'token');
 });

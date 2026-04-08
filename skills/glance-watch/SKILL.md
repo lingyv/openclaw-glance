@@ -87,7 +87,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 | `session_key` | 推荐：可区分群/私聊、多会话的会话键 |
 | `conversation_id` / `chat_id` | 宿主侧发送目标会话 ID |
 
-可从**当前 OpenClaw 上下文**映射到上述字段；**禁止**在拿不到会话信息时留空 `openclaw: {}` 仍假装已配置。宿主通过工具调用传入的 `context`（如 `channelId`、`sessionKey`、`conversationId`）时，插件运行时会合并进 `channel_configs.openclaw`。  
+可从**当前 OpenClaw 上下文**映射到上述字段；**禁止**在拿不到会话信息时留空 `openclaw: {}` 仍假装已配置。宿主通过工具调用传入的 `context`（如 `channelId`、`sessionKey`、`conversationId`）时，插件运行时会**仅**把其中的 **openclaw 会话路由字段**合并进 `channel_configs.openclaw`（不负责电话/邮箱/钉钉 cas 等联系人默认值，见下文「联系人记忆」）。  
 触发后解析 `watch.triggered` 的 **`payload.channel_configs.openclaw`**（及并列路由字段）再回复到对应会话。
 
 固定模板（必须按此结构构造，字段名不要改）：
@@ -120,7 +120,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
       content: '比特币跌幅超2%！当前价格 ${price}，跌幅 ${change_percent}%。建议卖出！'
     },
     sms: {
-      receiver: '18616726853',
+      receiver: '13800138000',
       template_id: 90010,
       content: '比特币跌幅超2%！当前价格 ${price}，建议卖出！'
     }
@@ -346,29 +346,47 @@ await runtime.queryTickerData({
 
 `openclaw` 渠道必传，`email` / `call` / `sms` / `dingtalk` 可选。如用户没明确说明使用邮件(email)、电话/外呼(call)、短信(sms)、钉钉(dingtalk)通知提醒，则只需要传入`openclaw`渠道。
 
-### 插件侧联系人记忆与自动补全（openclaw-plugin-node）
+### 联系人记忆（Agent / OpenClaw 侧 CSV，非插件）
 
-宿主在调用 `watch_create`、`notify_*` 等工具时，应把**当前发送者上下文**传入 `context`（与 `openclaw` 路由合并所用上下文一致）。与 OpenClaw `buildSenderContext` 对齐时，推荐优先使用嵌套对象 **`context.senderContext`**（或顶层同名字段），例如：
+**真源**：由 **Agent（你）** 维护 `~/.openclaw/workspace/memory/watch-notify-contacts.csv`。**禁止**假设插件会记忆或回填联系人。
 
-- `senderContext.channel`（或 `channel` / `channelId`）：来源渠道（钉钉建议为 `dingtalk`）
-- `senderContext.senderId`（或顶层 `senderId` / `sender_id`）：发送者唯一标识；钉钉下通常与 `cas_id` 一致
-- 仍兼容：`senderDingtalkId`、`event.metadata.senderDingtalkId` 等历史字段
-- `senderContext.senderName` / `senderName` / `displayName`：展示名（可用于外呼 `customer_name` 兜底）
+**CSV 建议表头**（首行为 header，UTF-8）：
 
-插件内等价解析函数为 `extractSenderContext`；`buildSenderContext` 为其别名（单参 `buildSenderContext(context)` 即可）。
+```text
+channel,sender_id,sender_name,phone,email,dingtalk_cas_id,customer_name,updated_at,notes
+```
 
-插件会在发 `watch.create` / `notify.send` 前：
+- `channel`：会话渠道，如 `dingtalk`
+- `sender_id`：与当前会话一致的发送者标识（如钉钉私聊常与 `chat_id` / `cas_id` 相同）
+- `sender_name`：展示名
+- `phone`：短信/外呼用手机号（纯数字，可含 +86，Agent 写入前宜规范为 11 位国内号）
+- `email`：邮件地址
+- `dingtalk_cas_id`：钉钉工作通知 `cas_id`
+- `customer_name`：外呼 `customer_name` 默认
+- `updated_at`：ISO 时间（可选）
+- `notes`：备注（可选）
 
-1. 按 `channel:sender_id` 读写独立 JSON（默认路径：`~/.openclaw/workspace/memory/watch-notify-contacts.json`，可通过插件配置 `contactsStorePath` 或环境变量 `OPENCLAW_CONTACTS_STORE_PATH` 覆盖）。
-2. 对 **sms / dingtalk / email / call** 缺省字段用该发送者已保存的默认值补全。
-3. **钉钉**：若当前会话渠道为 `dingtalk` 且未提供 `cas_id`，则用当前发送者 ID 作为默认 `cas_id` 并写入记忆。
-4. **外呼**：`customer_name` 优先用户本轮输入 → 记忆 → 发送者展示名。
+**取值优先级（调用 `watch.create` / `notify.*` 前）**：
 
-若补全后仍缺必填项（如从未提供过手机号），bridge 仍会报错，此时应追问用户；用户一旦提供有效值，插件会更新记忆，后续同发送者无需重复填写。
+1. 本轮对话里用户**明确提供**的值（最高）
+2. CSV 中命中当前发送者行的默认值（用 `rg` / 读文件查找，例如 `^dingtalk,<sender_id>,`）
+3. 仍缺必填字段 → **追问用户**，不要静默猜手机号或邮箱
 
-向用户确认时**避免完整回显手机号**，可用尾号提示。
+**推荐流程**：
 
-用户选择了某个通知渠道时，**最终**发往 bridge 的 payload 仍须满足各渠道必填项（插件会先按上文规则补全；补全后仍缺的，由 Agent 追问用户补齐）：
+1. 从当前会话取 `channel`、`sender_id`（或 `chat_id`）、`sender_name`（宿主上下文通常可直接拿到，比依赖工具 `meta.context` 更稳）。
+2. 若用户要电话/短信/邮件/钉钉工作通知：先在 CSV 查该行，把 `phone` / `email` / `dingtalk_cas_id` / `customer_name` **合并进** `channel_configs` 或 `notify.*` 的 payload。
+3. 用户新提供了联系方式：追加或更新 CSV 行（注意去重与隐私，向用户确认时**避免完整回显手机号**，可用尾号提示）。
+
+**与插件分工**：插件只负责 **openclaw 路由合并**（见上文 `channel_configs.openclaw`）、**透传**已写好的各渠道配置并调用 bridge；联系人默认值 **全部由 Agent 在调用前** 从 CSV（及本轮用户输入）准备好。
+
+**CSV 查询示例**（路径按本机 `~` 展开）：
+
+```bash
+rg -n '^dingtalk,jinguo\.xie,' ~/.openclaw/workspace/memory/watch-notify-contacts.csv
+```
+
+用户选择了某个通知渠道时，**最终**发往 bridge 的 payload **必须**满足各渠道必填项（Agent 按上文优先级补全；仍缺的须追问）：
 
 - 选择 `email`：`channel_configs.email.to_address/template_id/title/content`
 - 选择 `call`：`channel_configs.call.phone/customer_name/condition`
