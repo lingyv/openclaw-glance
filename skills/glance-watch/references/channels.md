@@ -29,16 +29,26 @@
 channel,sender_id,sender_name,phone,email,dingtalk_cas_id,customer_name,updated_at,notes
 ```
 
-取值优先级：
-1. 本轮用户明确提供
-2. CSV 历史默认值
-3. 仍缺必填字段 -> 追问
+执行要求：
+1. 凡是 `watch.create` 或 `notify.*` 涉及 `call/sms/email/dingtalk`，调用前必须先查询该 CSV。
+2. 取值优先级固定为：
+   - 本轮用户明确提供
+   - CSV 历史默认值
+   - 仍缺必填字段 -> 追问
+3. 若用户在本轮提供了新的联系方式，且本次 `watch.create` / `notify.*` 成功，必须回写 CSV。
+4. 联系人记忆只认该 CSV；不依赖、不读取、不提及 `watch-notify-contacts.json`。
+5. 若 CSV 不存在，先创建带表头的文件，再写入首条联系人记录。
 
 查询示例：
 
 ```bash
 rg -n '^dingtalk,jinguo\.xie,' ~/.openclaw/workspace/memory/watch-notify-contacts.csv
 ```
+
+写回要求：
+- 已有同一 `(channel, sender_id)` 记录时，更新该行，不重复追加。
+- 不存在时，按表头字段顺序追加新行。
+- `updated_at` 使用当前会话时区时间的 ISO-8601 字符串。
 
 ## `watch.create` 渠道必填
 
