@@ -211,3 +211,30 @@ test('adapter listWatches delegates to client', async () => {
   assert.equal(call[1].status, 'active');
   assert.equal(call[1].product_code, 'BTCUSDT');
 });
+
+test('adapter submitWatchDemand merges openclaw session routing from demand', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.submitWatchDemand({
+    productCode: 'BTCUSDT',
+    productType: 'crypto',
+    condition: 'price >= threshold',
+    variables: { threshold: 70000 },
+    channel: 'dingtalk',
+    accountId: 'default',
+    sessionKey: 'agent:main:dingtalk:group:cid_demo',
+    conversationId: 'cid_demo',
+    openclawConfig: { tenant: 'cn' },
+    channels: ['openclaw']
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'createWatch');
+  assert.ok(call, 'createWatch must be called');
+  const oc = call[1].channel_configs.openclaw;
+  assert.equal(oc.channel, 'dingtalk');
+  assert.equal(oc.account_id, 'default');
+  assert.equal(oc.session_key, 'agent:main:dingtalk:group:cid_demo');
+  assert.equal(oc.conversation_id, 'cid_demo');
+  assert.equal(oc.tenant, 'cn');
+});

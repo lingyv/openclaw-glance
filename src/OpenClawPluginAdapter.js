@@ -1,4 +1,5 @@
 import { OpenClawBridgeClient } from './OpenClawBridgeClient.js';
+import { extractOpenclawRoutingFromRecord } from './openclawRouting.js';
 
 /**
  * 全局单例 Adapter 实例
@@ -83,7 +84,6 @@ export class OpenClawPluginAdapter {
     const channelConfigs = { ...(demand.channelConfigs || {}) };
 
     if (demand.openclawConfig) {
-      channelConfigs.openclaw = demand.openclawConfig;
       if (!channels.includes('openclaw')) channels.push('openclaw');
     }
     if (demand.emailConfig) {
@@ -103,7 +103,20 @@ export class OpenClawPluginAdapter {
       if (!channels.includes('dingtalk')) channels.push('dingtalk');
     }
     if (!channels.includes('openclaw')) channels.unshift('openclaw');
-    if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
+
+    const existingOpenclaw =
+      channelConfigs.openclaw && typeof channelConfigs.openclaw === 'object'
+        ? { ...channelConfigs.openclaw }
+        : {};
+    const explicitOpenclaw =
+      demand.openclawConfig && typeof demand.openclawConfig === 'object'
+        ? { ...demand.openclawConfig }
+        : {};
+    channelConfigs.openclaw = {
+      ...extractOpenclawRoutingFromRecord(demand),
+      ...existingOpenclaw,
+      ...explicitOpenclaw
+    };
 
     const payload = {
       product_code: demand.productCode,

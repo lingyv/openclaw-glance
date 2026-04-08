@@ -77,6 +77,19 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 - `channels`（默认至少包含 `openclaw`）
 - 对应渠道配置（`channel_configs.email/call/sms/dingtalk`）
 
+**OpenClaw 会话路由（含 `openclaw` 渠道时必须带上）**  
+触发后要把提醒发回**当前群聊/私聊**，须把路由写入 `channel_configs.openclaw`（或由宿主 `context` 注入，由插件运行时合并）。字段与 openclaw-bridge 一致（snake_case；部分宿主可用 camelCase，由插件归一）：
+
+| 字段 | 含义 |
+|------|------|
+| `channel` / `source_channel` | 来源渠道（钉钉/飞书等与宿主约定） |
+| `account_id` | 多账号场景下的账号标识 |
+| `session_key` | 推荐：可区分群/私聊、多会话的会话键 |
+| `conversation_id` / `chat_id` | 宿主侧发送目标会话 ID |
+
+可从**当前 OpenClaw 上下文**映射到上述字段；**禁止**在拿不到会话信息时留空 `openclaw: {}` 仍假装已配置。宿主通过工具调用传入的 `context`（如 `channelId`、`sessionKey`、`conversationId`）时，插件运行时会合并进 `channel_configs.openclaw`。  
+触发后解析 `watch.triggered` 的 **`payload.channel_configs.openclaw`**（及并列路由字段）再回复到对应会话。
+
 固定模板（必须按此结构构造，字段名不要改）：
 
 ```javascript
@@ -94,7 +107,12 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
   channels: ['openclaw', 'dingtalk', 'sms'],
   // 注意：必须是对象，不要传 JSON 字符串
   channel_configs: {
-    openclaw: {},
+    openclaw: {
+      channel: 'dingtalk',
+      account_id: 'default',
+      session_key: 'agent:main:dingtalk:group:<conversation_id>',
+      conversation_id: '<conversation_id>'
+    },
     dingtalk: {
       cas_id: 'jinguo.xie',
       template_id: 3,

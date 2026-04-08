@@ -1,4 +1,5 @@
 import { resolveRuntimeConfig } from '../config/runtime-config.js';
+import { pickFirstString, extractOpenclawRoutingFromRecord } from '../openclawRouting.js';
 import { BridgeRuntime } from '../runtime/BridgeRuntime.js';
 import { PluginDispatcher } from '../runtime/dispatchers/PluginDispatcher.js';
 import { ProcessLock } from '../runtime/lock/ProcessLock.js';
@@ -56,49 +57,50 @@ async function getReadyRuntime(startupPromise) {
   return activeRuntime;
 }
 
-function pickFirstString(...values) {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-  return undefined;
-}
-
 function deriveOpenclawRouting({ params = {}, context = {} } = {}) {
   const metadata = context?.event?.metadata || {};
+  const routing = extractOpenclawRoutingFromRecord(params || {});
 
-  const channel = pickFirstString(
-    params?.channel,
-    params?.source_channel,
-    metadata?.channel,
-    metadata?.channelId,
-    context?.channel,
-    context?.channelId
-  );
-  const accountId = pickFirstString(params?.account_id, context?.accountId, metadata?.accountId);
-  const sessionKey = pickFirstString(
-    params?.session_key,
-    params?.sessionKey,
-    context?.sessionKey,
-    metadata?.sessionKey
-  );
-  const conversationId = pickFirstString(
-    params?.conversation_id,
-    params?.conversationId,
-    params?.chat_id,
-    params?.chatId,
-    context?.conversationId,
-    metadata?.conversationId,
-    metadata?.chatId,
-    metadata?.groupId
-  );
-
-  const routing = {};
-  if (channel) routing.channel = channel;
-  if (accountId) routing.account_id = accountId;
-  if (sessionKey) routing.session_key = sessionKey;
-  if (conversationId) routing.conversation_id = conversationId;
+  if (!routing.channel) {
+    const channel = pickFirstString(
+      params?.source_channel,
+      metadata?.channel,
+      metadata?.channelId,
+      context?.channel,
+      context?.channelId
+    );
+    if (channel) routing.channel = channel;
+  }
+  if (!routing.account_id) {
+    const account_id = pickFirstString(
+      params?.account_id,
+      context?.accountId,
+      metadata?.accountId
+    );
+    if (account_id) routing.account_id = account_id;
+  }
+  if (!routing.session_key) {
+    const session_key = pickFirstString(
+      params?.session_key,
+      params?.sessionKey,
+      context?.sessionKey,
+      metadata?.sessionKey
+    );
+    if (session_key) routing.session_key = session_key;
+  }
+  if (!routing.conversation_id) {
+    const conversation_id = pickFirstString(
+      params?.conversation_id,
+      params?.conversationId,
+      params?.chat_id,
+      params?.chatId,
+      context?.conversationId,
+      metadata?.conversationId,
+      metadata?.chatId,
+      metadata?.groupId
+    );
+    if (conversation_id) routing.conversation_id = conversation_id;
+  }
   return routing;
 }
 
@@ -111,7 +113,6 @@ function mapDemandToCreatePayload(demand = {}) {
   const channelConfigs = { ...(demand.channelConfigs || {}) };
 
   if (demand.openclawConfig) {
-    channelConfigs.openclaw = demand.openclawConfig;
     if (!channels.includes('openclaw')) channels.push('openclaw');
   }
   if (demand.emailConfig) {
@@ -131,7 +132,20 @@ function mapDemandToCreatePayload(demand = {}) {
     if (!channels.includes('dingtalk')) channels.push('dingtalk');
   }
   if (!channels.includes('openclaw')) channels.unshift('openclaw');
-  if (!channelConfigs.openclaw) channelConfigs.openclaw = {};
+
+  const existingOpenclaw =
+    channelConfigs.openclaw && typeof channelConfigs.openclaw === 'object'
+      ? { ...channelConfigs.openclaw }
+      : {};
+  const explicitOpenclaw =
+    demand.openclawConfig && typeof demand.openclawConfig === 'object'
+      ? { ...demand.openclawConfig }
+      : {};
+  channelConfigs.openclaw = {
+    ...extractOpenclawRoutingFromRecord(demand),
+    ...existingOpenclaw,
+    ...explicitOpenclaw
+  };
 
   return {
     product_code: demand.productCode || demand.product_code,
