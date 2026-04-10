@@ -7,8 +7,9 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 ## 目标
 
-用最小上下文完成三类任务：
-- 查行情：`watch.query_ticker`
+用最小上下文完成四类任务：
+- 查行情：`watch.query_ticker`（A 股 / 港股 / 加密现货）
+- 查基金实时估值：`watch_query_fund_estimates`（场外基金代码如 `000006.OF`，与 `market/quote` 不同）
 - 建/管策略：`watch.create` / `watch.list` / `watch.pause` / `watch.activate` / `watch.remove`
 - 立即通知：`notify.sms` / `notify.call` / `notify.email` / `notify.dingtalk`
 
@@ -17,6 +18,7 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 ### 统一动作名
 
 - `watch.query_ticker`
+- `watch_query_fund_estimates`
 - `watch.create`
 - `watch.list`
 - `watch.pause`
@@ -29,11 +31,12 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 ### 调用顺序
 
-1. 用户问“现在多少钱/查行情” -> 先 `watch.query_ticker`
-2. 用户要“盯盘/提醒” -> 补齐参数后 `watch.create`
-3. 用户要“看我的策略” -> `watch.list`
-4. 用户要“暂停/恢复/删除” -> `watch.pause` / `watch.activate` / `watch.remove`
-5. 用户要“马上发通知” -> 对应 `notify.*`
+1. 用户问“现在多少钱/查行情”（股票、指数、加密）-> 先 `watch.query_ticker`
+2. 用户问“基金估值/净值估算/今天涨跌幅”（场外基金）-> `watch_query_fund_estimates`，传 `fund_codes`（单只字符串或多只数组，如 `000006.OF`）
+3. 用户要“盯盘/提醒” -> 补齐参数后 `watch.create`
+4. 用户要“看我的策略” -> `watch.list`
+5. 用户要“暂停/恢复/删除” -> `watch.pause` / `watch.activate` / `watch.remove`
+6. 用户要“马上发通知” -> 对应 `notify.*`
 
 ### 创建策略最小必填
 
@@ -70,7 +73,8 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 | 用户主意图 | 必读文档（最小集合） |
 |---|---|
-| 查行情/当前价格/报价 | `references/query-and-symbol.md` |
+| 查行情/当前价格/报价（股/指/加密） | `references/query-and-symbol.md` |
+| 基金实时估值/净值估算 | `references/query-and-symbol.md`（基金小节） |
 | 创建盯盘策略（代码和市场已明确） | `references/watch-contract.md` |
 | 创建盯盘策略（名称或市场不明确） | `references/watch-contract.md` + `references/query-and-symbol.md` |
 | 创建盯盘 + 指定通知渠道 | `references/watch-contract.md` + `references/channels.md` |
@@ -95,5 +99,6 @@ description: 智能盯盘插件，用于监控A股、港股、比特币等金融
 
 - 用户说“帮我盯 BTC 跌 2% 提醒” -> 读取 `references/watch-contract.md` + `references/channels.md`
 - 用户说“腾讯现在多少钱” -> 读取 `references/query-and-symbol.md`
+- 用户说“这只基金今天估值多少” -> 读取 `references/query-and-symbol.md`（基金估值）
 - 用户说“发短信给我” -> 读取 `references/channels.md`
 - 用户说“为什么没发出来” -> 读取 `references/troubleshooting.md`

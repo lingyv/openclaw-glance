@@ -45,6 +45,11 @@ class FakeClient {
     return { ok: true, payload };
   }
 
+  async queryFundEstimates(payload) {
+    this.calls.push(['queryFundEstimates', payload]);
+    return { ok: true, payload };
+  }
+
   async listWatches(payload) {
     this.calls.push(['listWatches', payload]);
     return { ok: true, payload };
@@ -197,6 +202,22 @@ test('adapter queryTickerData maps payload fields', async () => {
   const payload = call[1];
   assert.equal(payload.market, 'crypto');
   assert.equal(payload.symbol, 'BTCUSDT');
+});
+
+test('adapter queryFundEstimates maps fund_codes and fundCodes', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.queryFundEstimates({ fund_codes: '000006.OF' });
+  let call = fake.calls.find((item) => item[0] === 'queryFundEstimates');
+  assert.ok(call);
+  assert.equal(call[1].fund_codes, '000006.OF');
+
+  fake.calls.length = 0;
+  await adapter.queryFundEstimates({ fundCodes: ['000006.OF', '110011.OF'] });
+  call = fake.calls.find((item) => item[0] === 'queryFundEstimates');
+  assert.ok(call);
+  assert.deepEqual(call[1].fund_codes, ['000006.OF', '110011.OF']);
 });
 
 test('adapter listWatches delegates to client', async () => {

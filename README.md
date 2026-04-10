@@ -10,7 +10,7 @@
 
 本项目当前以 OpenClaw 插件模式运行（`index.js` + `openclaw.plugin.json`），保持长连接并接收 `watch.triggered`，并对同一 `baseWsUrl + token` 启用严格单活锁，防止重复实例。
 
-**网络边界**：插件进程**只通过 WebSocket 连接 `openclaw-bridge`**（盯盘、行情 `ticker.query`、直连通知等），**不直连 MySQL** 或其它后端；库表/日终类数据若需暴露，应由 bridge 代理 **financial-data-gateway** 后再接工具（当前未内置 `finance_*` 工具）。
+**网络边界**：插件进程**只通过 WebSocket 连接 `openclaw-bridge`**（盯盘、行情 `ticker.query`、基金估值 `fund.estimates`、直连通知等），**不直连 MySQL** 或其它后端；库表/日终类数据若需暴露，应由 bridge 代理 **financial-data-gateway** 后再接工具（当前未内置 `finance_*` 工具）。
 
 ## OpenClaw 调用时机（插件模式）
 
@@ -23,7 +23,7 @@
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
-- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `notify.send` / `ping`
+- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `fund.estimates` / `notify.send` / `ping`
 - 支持渠道：`openclaw` / `email` / `call` / `sms` / `dingtalk`
   - 建议在 `channel_configs.openclaw` 中携带路由字段（如 `channel`、`session_key`、`account_id`、`conversation_id`），便于触发后回推到正确会话
 - 订阅推送：`watch.triggered`
@@ -39,9 +39,10 @@
 npm install
 ```
 
-## 测试
+## 测试与静态检查
 
 ```bash
+npm run lint
 npm test
 ```
 

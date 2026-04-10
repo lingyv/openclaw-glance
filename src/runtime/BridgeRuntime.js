@@ -9,6 +9,9 @@ function makeRequestId() {
   return `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** 与 OpenClawBridgeClient 一致：基金估值回源较慢 */
+const FUND_ESTIMATES_REQUEST_TIMEOUT_MS = 120_000;
+
 function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`;
@@ -118,7 +121,7 @@ export class BridgeRuntime extends EventEmitter {
     await this.lock?.release().catch(() => {});
   }
 
-  async request(type, payload = {}) {
+  async request(type, payload = {}, options = {}) {
     let requestId = makeRequestId();
     let normalizedPayload = payload || {};
     if (IDEMPOTENT_REQUEST_TYPES.has(type)) {
@@ -126,6 +129,9 @@ export class BridgeRuntime extends EventEmitter {
       requestId = resolved.requestId;
       normalizedPayload = resolved.payload;
     }
+    const timeoutMs =
+      options.requestTimeoutMs ??
+      (type === 'fund.estimates' ? FUND_ESTIMATES_REQUEST_TIMEOUT_MS : this.requestTimeoutMs);
     const msg = { type, request_id: requestId, payload: normalizedPayload };
     const { promise, resolve, reject } = this._buildWaiter();
 
@@ -138,10 +144,10 @@ export class BridgeRuntime extends EventEmitter {
         reject(new Error(`request queue overflow (max=${this.maxQueueSize})`));
         return promise;
       }
-      this.requestQueue.push({ msg, requestId, resolve, reject });
+      this.requestQueue.push({ msg, requestId, resolve, reject, timeoutMs });
       return promise;
     }
-    this._sendWithTimeout({ msg, requestId, resolve, reject });
+    this._sendWithTimeout({ msg, requestId, resolve, reject, timeoutMs });
     return promise;
   }
 
@@ -155,11 +161,12 @@ export class BridgeRuntime extends EventEmitter {
     return { promise, resolve, reject };
   }
 
-  _sendWithTimeout({ msg, requestId, resolve, reject }) {
+  _sendWithTimeout({ msg, requestId, resolve, reject, timeoutMs }) {
+    const ms = timeoutMs ?? this.requestTimeoutMs;
     const timer = setTimeout(() => {
       this.pending.delete(requestId);
       reject(new Error(`request timeout: ${msg.type} (${requestId})`));
-    }, this.requestTimeoutMs);
+    }, ms);
 
     this.pending.set(requestId, { resolve, reject, timer });
     try {

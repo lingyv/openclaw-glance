@@ -146,6 +146,24 @@ export class OpenClawPluginAdapter {
     return this.client.queryTickerData(payload);
   }
 
+  /**
+   * 基金实时估值；payload.fund_codes 与网关 POST /v1/realtime/fund/estimates 一致；应答为 fund.estimates.result。
+   */
+  async queryFundEstimates(query) {
+    let fundCodes = query?.fund_codes ?? query?.fundCodes;
+    if (fundCodes == null) {
+      throw new Error('queryFundEstimates requires fund_codes (or fundCodes)');
+    }
+    if (typeof fundCodes === 'string') {
+      fundCodes = fundCodes.trim();
+    } else if (Array.isArray(fundCodes)) {
+      fundCodes = fundCodes.map((x) => String(x).trim()).filter(Boolean);
+    } else {
+      throw new Error('fund_codes must be a string or string[]');
+    }
+    return this.client.queryFundEstimates({ fund_codes: fundCodes });
+  }
+
   async pause(strategyId) {
     return this.client.pauseWatch(strategyId);
   }

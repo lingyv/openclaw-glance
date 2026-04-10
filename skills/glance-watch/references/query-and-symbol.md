@@ -90,3 +90,31 @@ await runtime.queryTickerData({
 成功判定：`success === true` 且 `http_status === 200`。
 
 失败处理：读 `error` 与 `http_status` 反馈用户，不静默重试。
+
+## 基金实时估值（`watch_query_fund_estimates`）
+
+场外开放式基金**不能**用 `watch.query_ticker`。查**当日估算净值、估值涨跌幅**等应使用 **`watch_query_fund_estimates`**。
+
+### 调用参数
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `fund_codes` | 是* | 单只：`"000006.OF"`；多只：`["000006.OF","110011.OF"]`。也可用 camelCase：`fundCodes` |
+
+\* 工具 schema 中 `fund_codes` / `fundCodes` 二选一传入即可；宿主若只支持一种键名，统一用 `fund_codes`。
+
+代码一般为 **6 位 + `.OF`**（具体以基金代码为准）。接口可能较慢（服务端可达约数十秒），调用方需容忍较长等待。
+
+### 返回内容（`fund.estimates.result`）
+
+- `success`、`http_status`、`error`（失败时）
+- `data`：按基金代码映射的估值结构（字段以网关为准，如估算净值、涨跌幅等）
+
+成功判定：`success === true` 且通常 `http_status === 200`（具体以 bridge 返回为准）。
+
+```javascript
+// 示例：单只
+await runtime.queryFundEstimates({ fund_codes: '000006.OF' })
+// 或多只
+await runtime.queryFundEstimates({ fund_codes: ['000006.OF', '110011.OF'] })
+```

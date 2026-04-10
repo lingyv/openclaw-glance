@@ -81,6 +81,35 @@ test('queryTickerData sends ticker.query request', async () => {
   await client.close();
 });
 
+test('queryFundEstimates sends fund.estimates request', async () => {
+  const client = buildClient({ enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  const p = client.queryFundEstimates({ fund_codes: '000006.OF' });
+  const req = sent[0];
+  assert.equal(req.type, 'fund.estimates');
+  assert.equal(req.payload.fund_codes, '000006.OF');
+
+  client._onMessage(
+    JSON.stringify({
+      request_id: req.request_id,
+      type: 'fund.estimates.result',
+      success: true,
+      http_status: 200,
+      data: { '000006.OF': { estimate: 1.02 } }
+    })
+  );
+  const resp = await p;
+  assert.equal(resp.success, true);
+  assert.equal(resp.data['000006.OF'].estimate, 1.02);
+  await client.close();
+});
+
 test('listWatches sends watch.list request', async () => {
   const client = buildClient({ enqueueIfDisconnected: true });
   const sent = [];

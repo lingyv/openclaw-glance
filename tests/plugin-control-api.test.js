@@ -56,6 +56,7 @@ test('plugin register exposes control api and tool registrations', async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.equal(typeof api.glanceBridge?.queryTickerData, 'function');
+    assert.equal(typeof api.glanceBridge?.queryFundEstimates, 'function');
     assert.equal(typeof api.glanceBridge?.createWatch, 'function');
     assert.equal(typeof api.glanceBridge?.sendNotification, 'function');
     assert.equal(typeof api.glanceBridge?.sendSms, 'function');
@@ -82,6 +83,7 @@ test('plugin register exposes control api and tool registrations', async () => {
     await api.glanceBridge.activateWatch('s-1');
     await api.glanceBridge.deleteWatch('s-1');
     await api.glanceBridge.listWatches({ status: 'active' });
+    await api.glanceBridge.queryFundEstimates({ fund_codes: '000006.OF' });
 
     assert.deepEqual(tools.sort(), [
       'notify_call',
@@ -92,6 +94,7 @@ test('plugin register exposes control api and tool registrations', async () => {
       'watch_create',
       'watch_list',
       'watch_pause',
+      'watch_query_fund_estimates',
       'watch_query_ticker',
       'watch_remove'
     ]);
@@ -116,6 +119,8 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(requests[9].type, 'watch.delete');
     assert.equal(requests[10].type, 'watch.list');
     assert.equal(requests[10].payload.status, 'active');
+    assert.equal(requests[11].type, 'fund.estimates');
+    assert.equal(requests[11].payload.fund_codes, '000006.OF');
     assert.equal(infoLogs.some((line) => line.includes('lockDir=') && line.includes(lockDir)), true);
   } finally {
     await stopPluginRuntime();
@@ -134,8 +139,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     this.connected = true;
     this.emit('connected');
   };
-  BridgeRuntime.prototype.request = async function mockRequest(type, payload) {
-    calls.push({ type, payload });
+  BridgeRuntime.prototype.request = async function mockRequest(type, payload, options) {
+    calls.push({ type, payload, options });
     return { success: true, type, payload };
   };
 
@@ -178,12 +183,15 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     assert.ok(createDef, 'watch_create tool should be registered');
     const listDef = toolDefs.find((x) => x.def?.name === 'watch_list');
     assert.ok(listDef, 'watch_list tool should be registered');
+    const fundDef = toolDefs.find((x) => x.def?.name === 'watch_query_fund_estimates');
+    assert.ok(fundDef, 'watch_query_fund_estimates tool should be registered');
 
     await queryDef.def.execute('tool-call-1', {
       market: 'hk',
       symbol: '00700',
       segment: 'stock'
     });
+    await fundDef.def.execute('tool-call-f', { fund_codes: '000006.OF' });
     await dingtalkDef.def.execute('tool-call-2', {
       webhook: 'https://oapi.dingtalk.com/demo',
       text: 'demo'
@@ -213,16 +221,18 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     assert.equal(calls[0]?.type, 'ticker.query');
     assert.equal(calls[0]?.payload?.market, 'hk');
     assert.equal(calls[0]?.payload?.symbol, '00700');
-    assert.equal(calls[1]?.type, 'notify.send');
-    assert.equal(calls[1]?.payload?.channel, 'dingtalk');
-    assert.equal(calls[2]?.type, 'watch.create');
-    assert.equal(calls[2]?.payload?.channel_configs?.openclaw?.channel, 'dingtalk');
+    assert.equal(calls[1]?.type, 'fund.estimates');
+    assert.equal(calls[1]?.payload?.fund_codes, '000006.OF');
+    assert.equal(calls[2]?.type, 'notify.send');
+    assert.equal(calls[2]?.payload?.channel, 'dingtalk');
+    assert.equal(calls[3]?.type, 'watch.create');
+    assert.equal(calls[3]?.payload?.channel_configs?.openclaw?.channel, 'dingtalk');
     assert.equal(
-      calls[2]?.payload?.channel_configs?.openclaw?.session_key,
+      calls[3]?.payload?.channel_configs?.openclaw?.session_key,
       'agent:main:dingtalk:group:cid_demo'
     );
-    assert.equal(calls[3]?.type, 'watch.list');
-    assert.equal(calls[3]?.payload?.status, 'active');
+    assert.equal(calls[4]?.type, 'watch.list');
+    assert.equal(calls[4]?.payload?.status, 'active');
   } finally {
     await stopPluginRuntime();
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;

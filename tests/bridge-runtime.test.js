@@ -90,6 +90,28 @@ test('runtime reuses request_id for watch.create timeout retry', async () => {
   assert.equal(sent[0].payload.request_id, sent[1].payload.request_id);
 });
 
+test('runtime fund.estimates honors requestTimeoutMs override', async () => {
+  const runtime = new BridgeRuntime({
+    baseWsUrl: 'ws://127.0.0.1:9999',
+    token: 't',
+    dispatcher: { onTriggered: async () => {} },
+    heartbeatMs: 100000,
+    requestTimeoutMs: 60000
+  });
+
+  runtime.connected = true;
+  runtime.ws = {
+    readyState: 1,
+    send() {}
+  };
+
+  await assert.rejects(
+    runtime.request('fund.estimates', { fund_codes: '000006.OF' }, { requestTimeoutMs: 25 }),
+    /request timeout/
+  );
+  assert.equal(runtime.pending.size, 0);
+});
+
 test('runtime reuses request_id for notify.send timeout retry', async () => {
   const runtime = new BridgeRuntime({
     baseWsUrl: 'ws://127.0.0.1:9999',

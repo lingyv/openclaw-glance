@@ -3,6 +3,9 @@ import WebSocket from 'ws';
 
 const DEFAULT_BASE_WS_URL = 'wss://glanceup-pre.100credit.cn';
 
+/** 基金估值网关可能较慢，应大于 bridge 侧 OPENCLAW_FUND_ESTIMATES_TIMEOUT_SECONDS（默认 90s） */
+const FUND_ESTIMATES_REQUEST_TIMEOUT_MS = 120_000;
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -180,6 +183,12 @@ export class OpenClawBridgeClient extends EventEmitter {
     return this._request('ticker.query', payload || {});
   }
 
+  async queryFundEstimates(payload) {
+    return this._request('fund.estimates', payload || {}, {
+      requestTimeoutMs: FUND_ESTIMATES_REQUEST_TIMEOUT_MS
+    });
+  }
+
   async waitUntilConnected(timeoutMs = this.waitConnectTimeoutMs) {
     if (this.connected && this.ws && this.ws.readyState === WebSocket.OPEN) {
       return true;
@@ -216,6 +225,7 @@ export class OpenClawBridgeClient extends EventEmitter {
     if (!requestId) {
       requestId = makeRequestId();
     }
+    const timeoutMs = options.requestTimeoutMs ?? this.requestTimeoutMs;
     const msg = { type, request_id: requestId, payload: normalizedPayload };
     const { promise, resolve, reject } = this._buildWaiter(type, requestId);
 
@@ -228,12 +238,12 @@ export class OpenClawBridgeClient extends EventEmitter {
         reject(new Error(`request queue overflow (max=${this.maxQueueSize})`));
         return promise;
       }
-      this.requestQueue.push({ msg, requestId, type, resolve, reject });
+      this.requestQueue.push({ msg, requestId, type, resolve, reject, timeoutMs });
       this.emit('queued', { type, requestId, queueSize: this.requestQueue.length });
       return promise;
     }
 
-    this._sendWithTimeout({ msg, requestId, type, resolve, reject });
+    this._sendWithTimeout({ msg, requestId, type, resolve, reject, timeoutMs });
     return promise;
   }
 
@@ -247,11 +257,12 @@ export class OpenClawBridgeClient extends EventEmitter {
     return { promise, resolve, reject, type, requestId };
   }
 
-  _sendWithTimeout({ msg, requestId, type, resolve, reject }) {
+  _sendWithTimeout({ msg, requestId, type, resolve, reject, timeoutMs }) {
+    const ms = timeoutMs ?? this.requestTimeoutMs;
     const timer = setTimeout(() => {
       this.pending.delete(requestId);
       reject(new Error(`request timeout: ${type} (${requestId})`));
-    }, this.requestTimeoutMs);
+    }, ms);
 
     this.pending.set(requestId, { resolve, reject, timer, type });
     this.ws.send(JSON.stringify(msg));

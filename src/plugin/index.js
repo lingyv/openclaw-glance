@@ -153,6 +153,21 @@ function buildControlApi(startupPromise) {
       }
       return runtime.request('ticker.query', payload);
     },
+    async queryFundEstimates(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      let fundCodes = query.fund_codes ?? query.fundCodes;
+      if (fundCodes == null) {
+        throw new Error('queryFundEstimates requires fund_codes (or fundCodes): string or string[]');
+      }
+      if (typeof fundCodes === 'string') {
+        fundCodes = fundCodes.trim();
+      } else if (Array.isArray(fundCodes)) {
+        fundCodes = fundCodes.map((x) => String(x).trim()).filter(Boolean);
+      } else {
+        throw new Error('fund_codes must be a string or string[]');
+      }
+      return runtime.request('fund.estimates', { fund_codes: fundCodes });
+    },
     async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
       const normalized = mergeOpenclawChannelConfig(payload, context);
@@ -275,6 +290,25 @@ function registerControlTools(api, controlApi) {
       required: ['market', 'symbol']
     },
     (args) => controlApi.queryTickerData(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_query_fund_estimates',
+    'Query fund realtime estimates (估值): fund_codes as one OF code string (e.g. 000006.OF) or array of codes. Same as financial-data-gateway POST /v1/realtime/fund/estimates. Returns fund.estimates.result (success, data, error, http_status). May take up to ~90s on server.',
+    {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        fund_codes: {
+          oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }]
+        },
+        fundCodes: {
+          oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }]
+        }
+      }
+    },
+    (args) => controlApi.queryFundEstimates(args || {})
   );
 
   tryRegisterTool(
