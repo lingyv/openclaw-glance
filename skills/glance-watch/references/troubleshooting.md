@@ -6,13 +6,16 @@
 - 重试必须使用同一组 payload（字段和值不变）。
 - `request_id` 由插件运行时自动生成并在同 payload 上复用。
 
-## 创建策略失败（`watch.create`）
+## 创建策略失败（`watch_create`）
 
 处理规则：
 - 明确返回失败原因，不静默重试。
 - 若报“未注册的算子类型”，将 `operator_type` 修正为 `rule` 后重试。
+- 若报 `UNSUPPORTED_PRODUCT_TYPE`，说明命中了基金边界（如 `fund` 或 `000006.OF`）：
+  - 不再重试 `watch_create`
+  - 改用 `watch_query_fund_estimates` 或 `watch_search_fund_basic`
 
-## 通知失败（`notify.*`）
+## 通知失败（`notify_*`）
 
 处理规则：
 - 优先返回 `code/error/hint`。

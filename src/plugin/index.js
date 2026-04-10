@@ -12,6 +12,7 @@ import { ProcessLock } from '../runtime/lock/ProcessLock.js';
 
 /** 与 BridgeRuntime FINANCE_TABLE_REQUEST_TIMEOUT_MS 一致 */
 const GATEWAY_TABLE_REQUEST_TIMEOUT_MS = 90_000;
+const FUND_CODE_PATTERN = /^\d{6}\.OF$/i;
 
 let activeRuntime = null;
 
@@ -150,6 +151,20 @@ function mergeOpenclawChannelConfig(payload = {}, context = {}) {
   return merged;
 }
 
+function assertWatchCreateSupported(payload = {}) {
+  const code = String(payload.product_code ?? payload.productCode ?? '')
+    .trim()
+    .toUpperCase();
+  const productType = String(payload.product_type ?? payload.productType ?? '')
+    .trim()
+    .toLowerCase();
+  if (productType === 'fund' || FUND_CODE_PATTERN.test(code)) {
+    throw new Error(
+      'watch_create does not support fund strategies. Supported product_type: stock, hk_stock, index, crypto. For funds use watch_query_fund_estimates or watch_search_fund_basic.'
+    );
+  }
+}
+
 function buildControlApi(startupPromise) {
   return {
     async queryTickerData(query = {}) {
@@ -234,6 +249,7 @@ function buildControlApi(startupPromise) {
     async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
       const normalized = mergeOpenclawChannelConfig(payload, context);
+      assertWatchCreateSupported(normalized);
       return runtime.request('watch.create', normalized);
     },
     async sendNotification(input = {}) {
@@ -269,6 +285,7 @@ function buildControlApi(startupPromise) {
       const runtime = await getReadyRuntime(startupPromise);
       const payload = mapDemandToCreatePayload(demand);
       const normalized = mergeOpenclawChannelConfig(payload, context);
+      assertWatchCreateSupported(normalized);
       return runtime.request('watch.create', normalized);
     },
     async pauseWatch(strategyId) {
@@ -568,7 +585,7 @@ function registerControlTools(api, controlApi) {
   tryRegisterTool(
     registerTool,
     'watch_create',
-    'Create watch strategy',
+    'Create watch strategy for stock/hk_stock/index/crypto. Do NOT use for funds (.OF).',
     {
       type: 'object',
       additionalProperties: true,
@@ -579,7 +596,8 @@ function registerControlTools(api, controlApi) {
         operator_parameters: { type: 'object' },
         channels: { type: 'array', items: { type: 'string' } },
         channel_configs: { type: 'object' }
-      }
+      },
+      required: ['product_code', 'product_type', 'operator_parameters']
     },
     (args, meta = {}) => controlApi.createWatch(args || {}, meta?.context || {})
   );

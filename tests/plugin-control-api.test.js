@@ -368,3 +368,76 @@ test('sendNotification rejects missing or invalid channel', async () => {
     BridgeRuntime.prototype._connectOnce = originalConnectOnce;
   }
 });
+
+test('createWatch rejects fund strategies early', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-createwatch-fund-'));
+  const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
+  const originalRequest = BridgeRuntime.prototype.request;
+  const calls = [];
+
+  BridgeRuntime.prototype._connectOnce = async function mockConnect() {
+    this.connected = true;
+    this.emit('connected');
+  };
+  BridgeRuntime.prototype.request = async function mockRequest(type, payload) {
+    calls.push({ type, payload });
+    return { success: true, type, payload };
+  };
+
+  try {
+    const api = {
+      runtime: { dispatchReply: async () => {} },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-glance-plugin': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10096',
+                token: 'unit-token-createwatch-fund',
+                lockDir
+              }
+            }
+          }
+        }
+      },
+      registerTool() {},
+      onShutdown() {}
+    };
+
+    plugin.register(api);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await assert.rejects(
+      () =>
+        api.glanceBridge.createWatch({
+          product_code: '000006.OF',
+          product_type: 'fund',
+          operator_type: 'rule',
+          operator_parameters: {
+            condition: 'price <= threshold',
+            variables: { threshold: 1.0 }
+          }
+        }),
+      /does not support fund strategies/i
+    );
+    await assert.rejects(
+      () =>
+        api.glanceBridge.createWatch({
+          product_code: '000006.OF',
+          product_type: 'stock',
+          operator_type: 'rule',
+          operator_parameters: {
+            condition: 'price <= threshold',
+            variables: { threshold: 1.0 }
+          }
+        }),
+      /does not support fund strategies/i
+    );
+
+    assert.equal(calls.length, 0);
+  } finally {
+    await stopPluginRuntime();
+    BridgeRuntime.prototype._connectOnce = originalConnectOnce;
+    BridgeRuntime.prototype.request = originalRequest;
+  }
+});
