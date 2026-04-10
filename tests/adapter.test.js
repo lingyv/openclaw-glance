@@ -188,16 +188,15 @@ test('adapter queryTickerData maps payload fields', async () => {
   const adapter = new OpenClawPluginAdapter(fake);
 
   await adapter.queryTickerData({
-    productCode: 'BTCUSDT',
-    productType: 'crypto'
+    market: 'crypto',
+    symbol: 'BTCUSDT'
   });
 
   const call = fake.calls.find((item) => item[0] === 'queryTickerData');
   assert.ok(call, 'queryTickerData must be called');
   const payload = call[1];
-  assert.equal(payload.stock_code, 'BTCUSDT');
-  assert.equal(payload.product_type, 'crypto');
-  assert.equal(payload.market, '');
+  assert.equal(payload.market, 'crypto');
+  assert.equal(payload.symbol, 'BTCUSDT');
 });
 
 test('adapter listWatches delegates to client', async () => {

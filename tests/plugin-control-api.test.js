@@ -68,9 +68,9 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(typeof api.glanceBridge?.listWatches, 'function');
 
     await api.glanceBridge.queryTickerData({
-      stockCode: '00700',
-      market: 'HK',
-      productType: 'hk_stock'
+      market: 'hk',
+      symbol: '00700',
+      segment: 'stock'
     });
     await api.glanceBridge.createWatch({ product_code: '00700', product_type: 'hk_stock' });
     await api.glanceBridge.sendNotification({ channel: 'sms', payload: { receiver: '13800138000' } });
@@ -97,6 +97,9 @@ test('plugin register exposes control api and tool registrations', async () => {
     ]);
 
     assert.equal(requests[0].type, 'ticker.query');
+    assert.equal(requests[0].payload.market, 'hk');
+    assert.equal(requests[0].payload.symbol, '00700');
+    assert.equal(requests[0].payload.segment, 'stock');
     assert.equal(requests[1].type, 'watch.create');
     assert.equal(requests[2].type, 'notify.send');
     assert.equal(requests[2].payload.channel, 'sms');
@@ -177,9 +180,9 @@ test('plugin register supports openclaw-style registerTool execute signature', a
     assert.ok(listDef, 'watch_list tool should be registered');
 
     await queryDef.def.execute('tool-call-1', {
-      stockCode: '00700',
-      productType: 'hk_stock',
-      market: 'HK'
+      market: 'hk',
+      symbol: '00700',
+      segment: 'stock'
     });
     await dingtalkDef.def.execute('tool-call-2', {
       webhook: 'https://oapi.dingtalk.com/demo',
@@ -208,6 +211,8 @@ test('plugin register supports openclaw-style registerTool execute signature', a
       status: 'active'
     });
     assert.equal(calls[0]?.type, 'ticker.query');
+    assert.equal(calls[0]?.payload?.market, 'hk');
+    assert.equal(calls[0]?.payload?.symbol, '00700');
     assert.equal(calls[1]?.type, 'notify.send');
     assert.equal(calls[1]?.payload?.channel, 'dingtalk');
     assert.equal(calls[2]?.type, 'watch.create');

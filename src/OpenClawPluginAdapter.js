@@ -134,22 +134,16 @@ export class OpenClawPluginAdapter {
   }
 
   /**
-   * 查询标的实时行情（透传到 bridge 的 ticker.query）。
+   * 查询标的实时行情；参数为 market / symbol / segment，与网关 quote 接口一致；应答为 ticker.query.result。
    */
   async queryTickerData(query) {
-    const stockCode = query?.stockCode || query?.productCode || query?.stock_code || '';
-    const productType = query?.productType || query?.product_type || '';
-    let market = query?.market;
-
-    if (market == null && String(productType).toLowerCase() === 'crypto') {
-      market = '';
+    const market = query?.market == null ? '' : String(query.market).trim();
+    const symbol = query?.symbol == null ? '' : String(query.symbol).trim();
+    const payload = { market, symbol };
+    if (query?.segment != null && String(query.segment).trim() !== '') {
+      payload.segment = String(query.segment).trim();
     }
-
-    return this.client.queryTickerData({
-      stock_code: stockCode,
-      market: market == null ? '' : String(market),
-      product_type: productType
-    });
+    return this.client.queryTickerData(payload);
   }
 
   async pause(strategyId) {

@@ -10,6 +10,8 @@
 
 本项目当前以 OpenClaw 插件模式运行（`index.js` + `openclaw.plugin.json`），保持长连接并接收 `watch.triggered`，并对同一 `baseWsUrl + token` 启用严格单活锁，防止重复实例。
 
+**网络边界**：插件进程**只通过 WebSocket 连接 `openclaw-bridge`**（盯盘、行情 `ticker.query`、直连通知等），**不直连 MySQL** 或其它后端；库表/日终类数据若需暴露，应由 bridge 代理 **financial-data-gateway** 后再接工具（当前未内置 `finance_*` 工具）。
+
 ## OpenClaw 调用时机（插件模式）
 
 - 用户新建盯盘：调用 `submitWatchDemand` 或 `createWatch`
@@ -126,7 +128,7 @@ await adapter.submitWatchDemand({
 
 ## 插件工具（OpenClaw 调用）
 
-- `watch_query_ticker`
+- `watch_query_ticker`：参数 `market`（`a` / `hk` / `crypto`）、`symbol`、可选 `segment`，与 financial-data-gateway `GET /v1/market/quote` 一致
 - `watch_create`
 - `watch_list`
 - `watch_pause`

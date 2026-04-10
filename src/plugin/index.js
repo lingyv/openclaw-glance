@@ -145,17 +145,13 @@ function buildControlApi(startupPromise) {
   return {
     async queryTickerData(query = {}) {
       const runtime = await getReadyRuntime(startupPromise);
-      const stockCode = query.stockCode || query.productCode || query.stock_code || '';
-      const productType = query.productType || query.product_type || '';
-      let market = query.market;
-      if (market == null && String(productType).toLowerCase() === 'crypto') {
-        market = '';
+      const market = query.market == null ? '' : String(query.market).trim();
+      const symbol = query.symbol == null ? '' : String(query.symbol).trim();
+      const payload = { market, symbol };
+      if (query.segment != null && String(query.segment).trim() !== '') {
+        payload.segment = String(query.segment).trim();
       }
-      return runtime.request('ticker.query', {
-        stock_code: stockCode,
-        market: market == null ? '' : String(market),
-        product_type: productType
-      });
+      return runtime.request('ticker.query', payload);
     },
     async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -267,16 +263,16 @@ function registerControlTools(api, controlApi) {
   tryRegisterTool(
     registerTool,
     'watch_query_ticker',
-    'Query ticker data',
+    'Query realtime quote: market (a|hk|crypto), symbol, optional segment (auto|stock|index). Same as financial-data-gateway GET /v1/market/quote. Returns ticker.query.result with quote object (English keys).',
     {
       type: 'object',
       additionalProperties: true,
       properties: {
-        stock_code: { type: 'string' },
-        product_code: { type: 'string' },
-        product_type: { type: 'string' },
-        market: { type: 'string' }
-      }
+        market: { type: 'string' },
+        symbol: { type: 'string' },
+        segment: { type: 'string' }
+      },
+      required: ['market', 'symbol']
     },
     (args) => controlApi.queryTickerData(args || {})
   );

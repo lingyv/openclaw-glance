@@ -60,23 +60,24 @@ test('queryTickerData sends ticker.query request', async () => {
     send: (raw) => sent.push(JSON.parse(raw))
   };
 
-  const p = client.queryTickerData({ stock_code: '00700', market: 'HK' });
+  const p = client.queryTickerData({ market: 'hk', symbol: '00700' });
   const req = sent[0];
   assert.equal(req.type, 'ticker.query');
-  assert.equal(req.payload.stock_code, '00700');
-  assert.equal(req.payload.market, 'HK');
+  assert.equal(req.payload.market, 'hk');
+  assert.equal(req.payload.symbol, '00700');
 
   client._onMessage(
     JSON.stringify({
       request_id: req.request_id,
       type: 'ticker.query.result',
       success: true,
-      code: '000000'
+      http_status: 200,
+      quote: { last: 420.1 }
     })
   );
   const resp = await p;
   assert.equal(resp.success, true);
-  assert.equal(resp.code, '000000');
+  assert.equal(resp.http_status, 200);
   await client.close();
 });
 

@@ -36,8 +36,8 @@ operator_parameters: {
 
 ```javascript
 await runtime.queryTickerData({
-  stockCode: '00700',
-  market: 'HK',
-  productType: 'hk_stock'
+  market: 'hk',
+  symbol: '00700',
+  segment: 'stock'
 })
 ```
