@@ -13,6 +13,11 @@ import { ProcessLock } from '../runtime/lock/ProcessLock.js';
 /** 与 BridgeRuntime FINANCE_TABLE_REQUEST_TIMEOUT_MS 一致 */
 const GATEWAY_TABLE_REQUEST_TIMEOUT_MS = 90_000;
 const FUND_CODE_PATTERN = /^\d{6}\.OF$/i;
+const CHANNEL_TEMPLATE_DEFAULTS = Object.freeze({
+  sms: 90010,
+  email: 4,
+  dingtalk: 3
+});
 
 let activeRuntime = null;
 
@@ -73,13 +78,13 @@ function mapDemandToCreatePayload(demand = {}) {
         .filter((x) => typeof x === 'string' && x.trim())
         .map((x) => x.trim().toLowerCase())
     : [];
-  const channelConfigs = { ...(demand.channelConfigs || {}) };
+  const channelConfigs = applyChannelTemplateDefaults({ ...(demand.channelConfigs || {}) });
 
   if (demand.openclawConfig) {
     if (!channels.includes('openclaw')) channels.push('openclaw');
   }
   if (demand.emailConfig) {
-    channelConfigs.email = demand.emailConfig;
+    channelConfigs.email = withChannelTemplateDefaults('email', demand.emailConfig);
     if (!channels.includes('email')) channels.push('email');
   }
   if (demand.callConfig) {
@@ -87,11 +92,11 @@ function mapDemandToCreatePayload(demand = {}) {
     if (!channels.includes('call')) channels.push('call');
   }
   if (demand.smsConfig) {
-    channelConfigs.sms = demand.smsConfig;
+    channelConfigs.sms = withChannelTemplateDefaults('sms', demand.smsConfig);
     if (!channels.includes('sms')) channels.push('sms');
   }
   if (demand.dingtalkConfig) {
-    channelConfigs.dingtalk = demand.dingtalkConfig;
+    channelConfigs.dingtalk = withChannelTemplateDefaults('dingtalk', demand.dingtalkConfig);
     if (!channels.includes('dingtalk')) channels.push('dingtalk');
   }
   if (!channels.includes('openclaw')) channels.unshift('openclaw');
@@ -126,29 +131,47 @@ function mapDemandToCreatePayload(demand = {}) {
 
 function mergeOpenclawChannelConfig(payload = {}, context = {}) {
   const merged = { ...(payload || {}) };
-  const channelConfigs = { ...(merged.channel_configs || {}) };
-  const openclawConfig = { ...(channelConfigs.openclaw || {}) };
+  const channelConfigs = applyChannelTemplateDefaults({ ...(merged.channel_configs || {}) });
   const routing = deriveOpenclawRouting({ params: merged, context });
+  merged.channel_configs = channelConfigs;
 
-  if (Object.keys(routing).length === 0) {
-    return merged;
+  if (Object.keys(routing).length > 0) {
+    const openclawConfig = { ...(channelConfigs.openclaw || {}) };
+    channelConfigs.openclaw = {
+      ...openclawConfig,
+      ...routing
+    };
+
+    const channels = Array.isArray(merged.channels)
+      ? merged.channels
+          .filter((x) => typeof x === 'string' && x.trim())
+          .map((x) => x.trim().toLowerCase())
+      : [];
+    if (!channels.includes('openclaw')) channels.unshift('openclaw');
+    merged.channels = channels;
   }
 
-  channelConfigs.openclaw = {
-    ...openclawConfig,
-    ...routing
-  };
-
-  const channels = Array.isArray(merged.channels)
-    ? merged.channels
-        .filter((x) => typeof x === 'string' && x.trim())
-        .map((x) => x.trim().toLowerCase())
-    : [];
-  if (!channels.includes('openclaw')) channels.unshift('openclaw');
-
-  merged.channels = channels;
-  merged.channel_configs = channelConfigs;
   return merged;
+}
+
+function withChannelTemplateDefaults(channel, config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return config;
+  }
+  const defaultTemplateId = CHANNEL_TEMPLATE_DEFAULTS[channel];
+  if (defaultTemplateId == null || config.template_id != null) {
+    return config;
+  }
+  return { ...config, template_id: defaultTemplateId };
+}
+
+function applyChannelTemplateDefaults(channelConfigs = {}) {
+  return {
+    ...channelConfigs,
+    sms: withChannelTemplateDefaults('sms', channelConfigs.sms),
+    email: withChannelTemplateDefaults('email', channelConfigs.email),
+    dingtalk: withChannelTemplateDefaults('dingtalk', channelConfigs.dingtalk)
+  };
 }
 
 function assertWatchCreateSupported(payload = {}) {
@@ -263,7 +286,7 @@ function buildControlApi(startupPromise) {
           'notify.send requires input.channel to be one of: sms, email, call, dingtalk'
         );
       }
-      const payload = { ...(input.payload || {}) };
+      const payload = withChannelTemplateDefaults(ch, { ...(input.payload || {}) });
       return runtime.request('notify.send', {
         ...payload,
         channel: ch

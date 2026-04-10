@@ -107,8 +107,7 @@ await adapter.submitWatchDemand({
   variables: { threshold: 8.97 },
   channels: ['openclaw', 'email', 'call', 'sms', 'dingtalk'], // openclaw 必传，其它可选
   emailConfig: {
-    to_address: 'demo@example.com',
-    template_id: 4
+    to_address: 'demo@example.com'
   },
   callConfig: {
     phone: '13800138000',
@@ -116,12 +115,10 @@ await adapter.submitWatchDemand({
   },
   smsConfig: {
     receiver: '13800138000',
-    template_id: 90010,
     content: '测试短信'
   },
   dingtalkConfig: {
     cas_id: 'user.dingtalk',
-    template_id: 3,
     msg_type: 'text',
     content: '测试钉钉消息'
   }

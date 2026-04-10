@@ -66,18 +66,24 @@ OpenClaw 路由约束（当 `channels` 包含 `openclaw`）：
     },
     dingtalk: {
       cas_id: 'jinguo.xie',
-      template_id: 3,
       msg_type: 'text',
       content: '比特币跌幅超2%！当前价格 ${price}，跌幅 ${change_percent}%。建议卖出！'
     },
     sms: {
       receiver: '13800138000',
-      template_id: 90010,
       content: '比特币跌幅超2%！当前价格 ${price}，建议卖出！'
     }
   }
 }
 ```
+
+参数填写指引（创建策略时）：
+- `channel_configs.sms.receiver`：手机号，优先本轮用户输入，否则联系人 CSV。
+- `channel_configs.sms.content`：短信正文，写清触发条件+关键行情值。
+- `channel_configs.email.to_address`：收件邮箱，优先本轮输入，否则 CSV。
+- `channel_configs.email.title/content`：标题写“标的 + 触发事件”，正文写“当前值 + 阈值 + 建议动作”。
+- `channel_configs.call.phone/customer_name/condition`：分别为号码、称呼、电话播报文案。
+- `channel_configs.dingtalk.cas_id`：钉钉接收账号；`msg_type` 用 `text` 或 `markdown`；`content` 为消息正文。
 
 成功判定：
 - `success === true`

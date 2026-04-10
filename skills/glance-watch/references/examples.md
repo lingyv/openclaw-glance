@@ -49,7 +49,6 @@ await watch_create({
     },
     sms: {
       receiver: '13800138000',
-      template_id: 90010,
       content: '浦发银行触发盯盘条件，当前价 ${price}'
     }
   }
@@ -72,10 +71,9 @@ await watch_remove({ strategy_id: 's_123' })
 ### 2.1 发送短信（含联系人 CSV 补值）
 
 ```javascript
-// Step 0: 先查联系人 CSV，补 receiver/template_id
+// Step 0: 先查联系人 CSV，补 receiver
 await notify_sms({
   receiver: '13800138000',
-  template_id: 90010,
   content: '测试短信：比特币跌幅超过2%'
 })
 
@@ -93,14 +91,12 @@ await notify_call({
 
 await notify_email({
   to_address: 'demo@example.com',
-  template_id: 4,
   title: '盯盘提醒',
   content: 'BTCUSDT 触发阈值'
 })
 
 await notify_dingtalk({
   cas_id: 'user.dingtalk',
-  template_id: 3,
   msg_type: 'text',
   content: '盯盘触发：BTCUSDT'
 })

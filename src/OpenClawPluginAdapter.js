@@ -7,11 +7,37 @@ import {
 import { OpenClawBridgeClient } from './OpenClawBridgeClient.js';
 import { extractOpenclawRoutingFromRecord } from './openclawRouting.js';
 
+const CHANNEL_TEMPLATE_DEFAULTS = Object.freeze({
+  sms: 90010,
+  email: 4,
+  dingtalk: 3
+});
+
 /**
  * 全局单例 Adapter 实例
  * @type {OpenClawPluginAdapter|null}
  */
 let globalAdapterInstance = null;
+
+function withChannelTemplateDefaults(channel, config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return config;
+  }
+  const defaultTemplateId = CHANNEL_TEMPLATE_DEFAULTS[channel];
+  if (defaultTemplateId == null || config.template_id != null) {
+    return config;
+  }
+  return { ...config, template_id: defaultTemplateId };
+}
+
+function applyChannelTemplateDefaults(channelConfigs = {}) {
+  return {
+    ...channelConfigs,
+    sms: withChannelTemplateDefaults('sms', channelConfigs.sms),
+    email: withChannelTemplateDefaults('email', channelConfigs.email),
+    dingtalk: withChannelTemplateDefaults('dingtalk', channelConfigs.dingtalk)
+  };
+}
 
 /**
  * 获取全局单例 Adapter 实例
@@ -87,13 +113,13 @@ export class OpenClawPluginAdapter {
           .filter((x) => typeof x === 'string' && x.trim())
           .map((x) => x.trim().toLowerCase())
       : [];
-    const channelConfigs = { ...(demand.channelConfigs || {}) };
+    const channelConfigs = applyChannelTemplateDefaults({ ...(demand.channelConfigs || {}) });
 
     if (demand.openclawConfig) {
       if (!channels.includes('openclaw')) channels.push('openclaw');
     }
     if (demand.emailConfig) {
-      channelConfigs.email = demand.emailConfig;
+      channelConfigs.email = withChannelTemplateDefaults('email', demand.emailConfig);
       if (!channels.includes('email')) channels.push('email');
     }
     if (demand.callConfig) {
@@ -101,11 +127,11 @@ export class OpenClawPluginAdapter {
       if (!channels.includes('call')) channels.push('call');
     }
     if (demand.smsConfig) {
-      channelConfigs.sms = demand.smsConfig;
+      channelConfigs.sms = withChannelTemplateDefaults('sms', demand.smsConfig);
       if (!channels.includes('sms')) channels.push('sms');
     }
     if (demand.dingtalkConfig) {
-      channelConfigs.dingtalk = demand.dingtalkConfig;
+      channelConfigs.dingtalk = withChannelTemplateDefaults('dingtalk', demand.dingtalkConfig);
       if (!channels.includes('dingtalk')) channels.push('dingtalk');
     }
     if (!channels.includes('openclaw')) channels.unshift('openclaw');

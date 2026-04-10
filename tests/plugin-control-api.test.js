@@ -130,12 +130,15 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(requests[2].payload.channel, 'sms');
     assert.equal(requests[3].type, 'notify.send');
     assert.equal(requests[3].payload.channel, 'sms');
+    assert.equal(requests[3].payload.template_id, 90010);
     assert.equal(requests[4].type, 'notify.send');
     assert.equal(requests[4].payload.channel, 'call');
     assert.equal(requests[5].type, 'notify.send');
     assert.equal(requests[5].payload.channel, 'email');
+    assert.equal(requests[5].payload.template_id, 4);
     assert.equal(requests[6].type, 'notify.send');
     assert.equal(requests[6].payload.channel, 'dingtalk');
+    assert.equal(requests[6].payload.template_id, 3);
     assert.equal(requests[7].type, 'watch.pause');
     assert.equal(requests[8].type, 'watch.activate');
     assert.equal(requests[9].type, 'watch.delete');
@@ -324,6 +327,72 @@ test('notify wrappers must not allow payload to override channel', async () => {
   }
 });
 
+test('createWatch auto-fills template_id defaults in channel_configs', async () => {
+  const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-createwatch-template-'));
+  const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
+  const originalRequest = BridgeRuntime.prototype.request;
+  const calls = [];
+
+  BridgeRuntime.prototype._connectOnce = async function mockConnect() {
+    this.connected = true;
+    this.emit('connected');
+  };
+  BridgeRuntime.prototype.request = async function mockRequest(type, payload) {
+    calls.push({ type, payload });
+    return { success: true, type, payload };
+  };
+
+  try {
+    const api = {
+      runtime: { dispatchReply: async () => {} },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-glance-plugin': {
+              config: {
+                baseWsUrl: 'ws://127.0.0.1:10096',
+                token: 'unit-token-createwatch-template',
+                lockDir
+              }
+            }
+          }
+        }
+      },
+      registerTool() {},
+      onShutdown() {}
+    };
+
+    plugin.register(api);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await api.glanceBridge.createWatch({
+      product_code: 'BTCUSDT',
+      product_type: 'crypto',
+      operator_type: 'rule',
+      operator_parameters: {
+        condition: 'price <= threshold',
+        variables: { threshold: 68000 }
+      },
+      channels: ['sms', 'email', 'dingtalk'],
+      channel_configs: {
+        sms: { receiver: '13800138000', content: '短信通知' },
+        email: { to_address: 'demo@example.com', title: '邮件通知', content: '内容' },
+        dingtalk: { cas_id: 'user.dingtalk', msg_type: 'text', content: '钉钉通知' }
+      }
+    });
+
+    const call = calls.find((x) => x.type === 'watch.create');
+    assert.ok(call);
+    assert.equal(call.payload.channel_configs.sms.template_id, 90010);
+    assert.equal(call.payload.channel_configs.email.template_id, 4);
+    assert.equal(call.payload.channel_configs.dingtalk.template_id, 3);
+  } finally {
+    await stopPluginRuntime();
+    BridgeRuntime.prototype._connectOnce = originalConnectOnce;
+    BridgeRuntime.prototype.request = originalRequest;
+  }
+});
+
 test('sendNotification rejects missing or invalid channel', async () => {
   const lockDir = await mkdtemp(path.join(os.tmpdir(), 'plugin-notify-ch-'));
   const originalConnectOnce = BridgeRuntime.prototype._connectOnce;
@@ -392,7 +461,7 @@ test('createWatch rejects fund strategies early', async () => {
           entries: {
             'openclaw-glance-plugin': {
               config: {
-                baseWsUrl: 'ws://127.0.0.1:10096',
+                baseWsUrl: 'ws://127.0.0.1:10097',
                 token: 'unit-token-createwatch-fund',
                 lockDir
               }

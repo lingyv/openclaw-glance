@@ -111,8 +111,7 @@ test('adapter supports email and call channel shortcuts', async () => {
     condition: 'price >= threshold',
     variables: { threshold: 70000 },
     emailConfig: {
-      to_address: 'demo@example.com',
-      template_id: 4
+      to_address: 'demo@example.com'
     },
     callConfig: {
       phone: '13800138000',
@@ -131,6 +130,7 @@ test('adapter supports email and call channel shortcuts', async () => {
   assert.ok(payload.channel_configs.openclaw);
   assert.ok(payload.channel_configs.email);
   assert.ok(payload.channel_configs.call);
+  assert.equal(payload.channel_configs.email.template_id, 4);
 });
 
 test('adapter supports sms channel shortcut', async () => {
@@ -189,8 +189,37 @@ test('adapter supports dingtalk channel shortcut', async () => {
   assert.ok(payload.channel_configs.openclaw);
   assert.deepEqual(payload.channel_configs.dingtalk, {
     webhook: 'https://oapi.dingtalk.com/robot/send?access_token=demo',
-    atMobiles: ['13800138000']
+    atMobiles: ['13800138000'],
+    template_id: 3
   });
+});
+
+test('adapter auto-fills template_id defaults when omitted', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.submitWatchDemand({
+    productCode: '000001',
+    productType: 'stock',
+    condition: 'price <= threshold',
+    variables: { threshold: 10 },
+    smsConfig: {
+      receiver: '13968617776',
+      content: '测试消息2'
+    },
+    dingtalkConfig: {
+      cas_id: 'user.dingtalk',
+      msg_type: 'text',
+      content: '测试钉钉消息2'
+    }
+  });
+
+  const call = fake.calls.find((item) => item[0] === 'createWatch');
+  assert.ok(call, 'createWatch must be called');
+  const payload = call[1];
+
+  assert.equal(payload.channel_configs.sms.template_id, 90010);
+  assert.equal(payload.channel_configs.dingtalk.template_id, 3);
 });
 
 test('adapter queryTickerData maps payload fields', async () => {

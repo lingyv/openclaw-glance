@@ -21,7 +21,6 @@
 
 ### `notify_sms`
 - `receiver`（或 `phone`）
-- `template_id`
 - `content`
 
 ### `notify_call`
@@ -31,15 +30,31 @@
 
 ### `notify_email`
 - `to_address`
-- `template_id`
 - `title`
 - `content`
 
 ### `notify_dingtalk`
 - `cas_id`
-- `template_id`
 - `msg_type`（`text` 或 `markdown`）
 - `content`
+
+## 参数怎么填（直连通知）
+
+- `notify_sms`
+  - `receiver/phone`：11 位手机号（优先用户本轮给出，否则从联系人 CSV 补）。
+  - `content`：一句可直接发送的短信正文，可带变量占位（如 `${price}`）。
+- `notify_call`
+  - `phone`：11 位手机号。
+  - `customer_name`：称呼（优先用户输入，否则 CSV）。
+  - `condition`：电话播报内容，直接写“因为什么触发了通知”。
+- `notify_email`
+  - `to_address`：收件邮箱（优先用户输入，否则 CSV）。
+  - `title`：邮件标题（简短，包含标的+触发事件）。
+  - `content`：邮件正文（包含当前值、阈值、建议动作）。
+- `notify_dingtalk`
+  - `cas_id`：接收人钉钉账号（优先用户输入，否则 CSV 的 `dingtalk_cas_id`）。
+  - `msg_type`：`text`（普通文本）或 `markdown`（需要格式时）。
+  - `content`：消息正文。
 
 ## 联系人记忆（强约束）
 
@@ -74,12 +89,11 @@ rg -n '^sms,jinguo\.xie,' ~/.openclaw/workspace/memory/watch-notify-contacts.csv
 ## 常见禁止项
 
 - 手机号含空格、中划线、`+86-` 等非纯数字
-- `template_id` 传字符串
 - `msg_type` 不是 `text/markdown`
 
 ## `watch_create` 渠道必填映射
 
-- 选 `email`：`channel_configs.email.to_address/template_id/title/content`
+- 选 `email`：`channel_configs.email.to_address/title/content`
 - 选 `call`：`channel_configs.call.phone/customer_name/condition`
-- 选 `sms`：`channel_configs.sms.receiver(或phone)/template_id/content`
-- 选 `dingtalk`：`channel_configs.dingtalk.cas_id/template_id/msg_type/content`
+- 选 `sms`：`channel_configs.sms.receiver(或phone)/content`
+- 选 `dingtalk`：`channel_configs.dingtalk.cas_id/msg_type/content`
