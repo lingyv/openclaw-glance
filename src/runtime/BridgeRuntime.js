@@ -12,6 +12,9 @@ function makeRequestId() {
 /** 与 OpenClawBridgeClient 一致：基金估值回源较慢 */
 const FUND_ESTIMATES_REQUEST_TIMEOUT_MS = 120_000;
 
+/** 网关表查询（新闻等）可能较慢 */
+const FINANCE_TABLE_REQUEST_TIMEOUT_MS = 90_000;
+
 function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`;
@@ -131,7 +134,11 @@ export class BridgeRuntime extends EventEmitter {
     }
     const timeoutMs =
       options.requestTimeoutMs ??
-      (type === 'fund.estimates' ? FUND_ESTIMATES_REQUEST_TIMEOUT_MS : this.requestTimeoutMs);
+      (type === 'fund.estimates'
+        ? FUND_ESTIMATES_REQUEST_TIMEOUT_MS
+        : type === 'finance.table'
+          ? FINANCE_TABLE_REQUEST_TIMEOUT_MS
+          : this.requestTimeoutMs);
     const msg = { type, request_id: requestId, payload: normalizedPayload };
     const { promise, resolve, reject } = this._buildWaiter();
 

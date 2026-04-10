@@ -112,6 +112,32 @@ test('runtime fund.estimates honors requestTimeoutMs override', async () => {
   assert.equal(runtime.pending.size, 0);
 });
 
+test('runtime finance.table honors requestTimeoutMs override', async () => {
+  const runtime = new BridgeRuntime({
+    baseWsUrl: 'ws://127.0.0.1:9999',
+    token: 't',
+    dispatcher: { onTriggered: async () => {} },
+    heartbeatMs: 100000,
+    requestTimeoutMs: 60000
+  });
+
+  runtime.connected = true;
+  runtime.ws = {
+    readyState: 1,
+    send() {}
+  };
+
+  await assert.rejects(
+    runtime.request(
+      'finance.table',
+      { path: '/v1/news', query: { keyword: 'x' } },
+      { requestTimeoutMs: 25 }
+    ),
+    /request timeout/
+  );
+  assert.equal(runtime.pending.size, 0);
+});
+
 test('runtime reuses request_id for notify.send timeout retry', async () => {
   const runtime = new BridgeRuntime({
     baseWsUrl: 'ws://127.0.0.1:9999',

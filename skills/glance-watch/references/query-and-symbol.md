@@ -1,5 +1,24 @@
 # 标的检索与行情查询
 
+## OpenClaw Agent：工具路由（必读）
+
+插件注册的**真实工具名**为下划线形式（如 `watch_query_ticker`），与宿主内部 `runtime.*` 方法名不同。
+
+| 意图 | 工具 | 成功时如何读结果 |
+|------|------|------------------|
+| 实时价/涨跌幅（已有代码） | `watch_query_ticker` | `ticker.query.result`：`success===true`，价格等在 `quote`（**英文键**） |
+| 只有中文名/模糊名 | 先 `watch_search_a_stock_basic` 等 | `finance.table.result`：候选在 `data[]`，取 `ts_code` 再 ticker |
+| 场外基金**估值** | `watch_query_fund_estimates` | `fund.estimates.result`：`data` 按基金代码映射 |
+| 基金**档案** | `watch_search_fund_basic` | `finance.table.result`：`data[]` |
+| 快讯 | `watch_fin_news` | `finance.table.result`：须带 `keyword` 或 `q` |
+| 是否开市 | `watch_trade_calendar` | `finance.table.result`：`exchange` + 日期区间；**A 股**常用 `SSE`/`SZSE` |
+
+**插件侧便利行为（减少误调用）**：
+
+- `watch_query_ticker`：`market` 支持 **A股、港股、加密** 等中文别名，会映射为 `a`/`hk`/`crypto`。
+- 各 `watch_search_*` / `watch_fin_news`：`keyword` 与 `q` 等价，至少填一个；插件会统一成网关的 `keyword`。
+- `watch_trade_calendar`：支持 `startDate`/`endDate`，会合并为 `start_date`/`end_date`。
+
 ## 标的检索规则（必须遵循）
 
 当不能直接确定 `product_code` / `product_type` 时，先查本地 CSV，再让用户确认。
@@ -42,11 +61,26 @@ grep -nE "平安银行|腾讯|沪深300|000001|00700|恒生科技指数|HSTECH" 
   data/stock_a.csv data/stock_hk.csv data/index_a.csv data/index_hk.csv
 ```
 
-## 行情查询流程（`watch.query_ticker`）
+## 辅助检索（名称 → 代码、新闻、是否开市）
+
+以下工具经 **openclaw-bridge** 白名单透传 **financial-data-gateway** 只读 `GET`，返回均为 `finance.table.result`，成功时 `success === true` 且 `data` 为行数组（字段以网关为准）。
+
+| 工具 | 网关路径 | 典型用途 |
+|------|-----------|----------|
+| `watch_search_a_stock_basic` | `GET /v1/a-stock/basic/search` | A 股：`keyword` 或 `q`，可选 `limit` |
+| `watch_search_hk_stock_basic` | `GET /v1/hk-stock/basic/search` | 港股：同上 |
+| `watch_search_index_basic` | `GET /v1/index/basic/search` | 指数：同上 |
+| `watch_search_fund_basic` | `GET /v1/fund/basic` | 基金档案：`ts_code` 或 `keyword`/`q` |
+| `watch_fin_news` | `GET /v1/news` | 快讯：`keyword`/`q`；可选 `limit`、`pub_time_start`、`pub_time_end` |
+| `watch_trade_calendar` | `GET /v1/trade-calendar` | 是否开市：`exchange`、`start_date`、`end_date`（可用 `startDate`/`endDate`） |
+
+流程建议：用户只说公司/基金**名称**时，先用对应 **search** 工具解析出 `ts_code` / 完整代码，再调用 `watch_query_ticker`（股/指/加密）或 `watch_query_fund_estimates`（场外基金估值）。问「今天 A 股开不开盘」用 `watch_trade_calendar`（如 `exchange=SSE` 与日期区间；深市用 `SZSE`）。
+
+## 行情查询流程（`watch_query_ticker`）
 
 说明：
-- 对外统一动作名是 `watch.query_ticker`。
-- 文档中的 `runtime.queryTickerData(...)` 仅用于说明宿主运行时内部调用形态。
+- OpenClaw 工具名：**`watch_query_ticker`**。
+- 文档中的 `runtime.queryTickerData(...)` 仅表示 SDK/宿主内部调用形态。
 - **查询参数名与 financial-data-gateway `GET /v1/market/quote` 一致**（详见该仓库 `docs/实时行情接口.md`）。
 
 ### 调用参数
@@ -80,11 +114,9 @@ grep -nE "平安银行|腾讯|沪深300|000001|00700|恒生科技指数|HSTECH" 
 示例：
 
 ```javascript
-await runtime.queryTickerData({
-  market: 'hk',
-  symbol: '00700',
-  segment: 'stock'
-})
+// 工具调用侧等价字段示例
+{ "market": "港股", "symbol": "00700", "segment": "stock" }
+// 或 runtime：await runtime.queryTickerData({ market: 'hk', symbol: '00700', segment: 'stock' })
 ```
 
 成功判定：`success === true` 且 `http_status === 200`。

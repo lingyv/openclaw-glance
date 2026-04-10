@@ -6,6 +6,9 @@ const DEFAULT_BASE_WS_URL = 'wss://glanceup-pre.100credit.cn';
 /** 基金估值网关可能较慢，应大于 bridge 侧 OPENCLAW_FUND_ESTIMATES_TIMEOUT_SECONDS（默认 90s） */
 const FUND_ESTIMATES_REQUEST_TIMEOUT_MS = 120_000;
 
+/** 白名单表接口（含 fin_news）可能较慢 */
+const FINANCE_TABLE_REQUEST_TIMEOUT_MS = 90_000;
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -186,6 +189,12 @@ export class OpenClawBridgeClient extends EventEmitter {
   async queryFundEstimates(payload) {
     return this._request('fund.estimates', payload || {}, {
       requestTimeoutMs: FUND_ESTIMATES_REQUEST_TIMEOUT_MS
+    });
+  }
+
+  async queryFinanceTable(payload) {
+    return this._request('finance.table', payload || {}, {
+      requestTimeoutMs: FINANCE_TABLE_REQUEST_TIMEOUT_MS
     });
   }
 

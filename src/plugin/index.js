@@ -1,8 +1,17 @@
+import {
+  normalizeFundBasicTableQuery,
+  normalizeKeywordTableQuery,
+  normalizeTickerQuery,
+  normalizeTradeCalendarQuery
+} from '../agentQueryNormalize.js';
 import { resolveRuntimeConfig } from '../config/runtime-config.js';
 import { extractOpenclawRoutingFromRecord, deriveOpenclawRouting } from '../openclawRouting.js';
 import { BridgeRuntime } from '../runtime/BridgeRuntime.js';
 import { PluginDispatcher } from '../runtime/dispatchers/PluginDispatcher.js';
 import { ProcessLock } from '../runtime/lock/ProcessLock.js';
+
+/** 与 BridgeRuntime FINANCE_TABLE_REQUEST_TIMEOUT_MS 一致 */
+const GATEWAY_TABLE_REQUEST_TIMEOUT_MS = 90_000;
 
 let activeRuntime = null;
 
@@ -145,11 +154,11 @@ function buildControlApi(startupPromise) {
   return {
     async queryTickerData(query = {}) {
       const runtime = await getReadyRuntime(startupPromise);
-      const market = query.market == null ? '' : String(query.market).trim();
-      const symbol = query.symbol == null ? '' : String(query.symbol).trim();
-      const payload = { market, symbol };
-      if (query.segment != null && String(query.segment).trim() !== '') {
-        payload.segment = String(query.segment).trim();
+      const payload = normalizeTickerQuery(query || {});
+      if (!payload.market || !payload.symbol) {
+        throw new Error(
+          'queryTickerData requires market and symbol. If user gave a company/index name only, call watch_search_*_basic first to get ts_code, then map to market+symbol.'
+        );
       }
       return runtime.request('ticker.query', payload);
     },
@@ -167,6 +176,60 @@ function buildControlApi(startupPromise) {
         throw new Error('fund_codes must be a string or string[]');
       }
       return runtime.request('fund.estimates', { fund_codes: fundCodes });
+    },
+    async searchAStockBasic(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeKeywordTableQuery(query, 'searchAStockBasic');
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/a-stock/basic/search', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
+    },
+    async searchHkStockBasic(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeKeywordTableQuery(query, 'searchHkStockBasic');
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/hk-stock/basic/search', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
+    },
+    async searchIndexBasic(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeKeywordTableQuery(query, 'searchIndexBasic');
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/index/basic/search', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
+    },
+    async searchFundBasic(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeFundBasicTableQuery(query);
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/fund/basic', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
+    },
+    async queryFinNews(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeKeywordTableQuery(query, 'queryFinNews');
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/news', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
+    },
+    async queryTradeCalendar(query = {}) {
+      const runtime = await getReadyRuntime(startupPromise);
+      const q = normalizeTradeCalendarQuery(query);
+      return runtime.request(
+        'finance.table',
+        { path: '/v1/trade-calendar', query: q },
+        { requestTimeoutMs: GATEWAY_TABLE_REQUEST_TIMEOUT_MS }
+      );
     },
     async createWatch(payload = {}, context = {}) {
       const runtime = await getReadyRuntime(startupPromise);
@@ -275,40 +338,183 @@ function tryRegisterTool(registerTool, name, description, parameters, handler) {
 function registerControlTools(api, controlApi) {
   const registerTool = api?.registerTool || api?.runtime?.registerTool;
 
+  const DESC_TICKER =
+    '【实时行情】当前价、涨跌幅等撮合侧快照。' +
+    'When: 用户已明确标的代码/简称对应的代码时用；仅说公司名时先用 watch_search_*_basic 再调本工具。' +
+    'Returns: type=ticker.query.result；success=true 时读 quote（英文键 last、name、pct_change 等）。' +
+    'Do NOT: 场外基金估值勿用本工具（用 watch_query_fund_estimates）。market 可用 a|hk|crypto 或「A股」「港股」「加密」等别名。';
+
   tryRegisterTool(
     registerTool,
     'watch_query_ticker',
-    'Query realtime quote: market (a|hk|crypto), symbol, optional segment (auto|stock|index). Same as financial-data-gateway GET /v1/market/quote. Returns ticker.query.result with quote object (English keys).',
+    DESC_TICKER,
     {
       type: 'object',
+      description:
+        '实时行情。必填 market + symbol；segment 仅 A/港股指数场景建议 index 或省略。插件会将「A股」等映射为 a。',
       additionalProperties: true,
       properties: {
-        market: { type: 'string' },
-        symbol: { type: 'string' },
-        segment: { type: 'string' }
+        market: {
+          type: 'string',
+          description:
+            '市场：a | hk | crypto；或中文别名 A股/港股/加密/数字货币（插件会归一化）。'
+        },
+        symbol: {
+          type: 'string',
+          description:
+            '标的代码：A 股如 600000.SH 或 600000；港股 00700；加密 BTCUSDT。名称请先用 search 工具解析。'
+        },
+        segment: {
+          type: 'string',
+          description: '可选。A/港股时 auto|stock|index；加密不传。'
+        }
       },
       required: ['market', 'symbol']
     },
     (args) => controlApi.queryTickerData(args || {})
   );
 
+  const DESC_FUND_EST =
+    '【基金当日估值】场外开放式基金估算净值/涨跌，非股票盘口。' +
+    'When: 用户问「基金今天估值、估算涨跌」且代码形如 xxxxxx.OF。' +
+    'Returns: fund.estimates.result；可能较慢（~90s）。' +
+    'Do NOT: 股票/指数/加密行情用 watch_query_ticker。';
+
   tryRegisterTool(
     registerTool,
     'watch_query_fund_estimates',
-    'Query fund realtime estimates (估值): fund_codes as one OF code string (e.g. 000006.OF) or array of codes. Same as financial-data-gateway POST /v1/realtime/fund/estimates. Returns fund.estimates.result (success, data, error, http_status). May take up to ~90s on server.',
+    DESC_FUND_EST,
     {
       type: 'object',
+      description: '单只或多只基金代码；fund_codes 与 fundCodes 等价。',
       additionalProperties: true,
       properties: {
         fund_codes: {
+          description: '单只 "000006.OF" 或字符串数组；与 fundCodes 二选一即可',
           oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }]
         },
         fundCodes: {
+          description: 'camelCase 别名，含义同 fund_codes',
           oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }]
         }
-      }
+      },
+      anyOf: [{ required: ['fund_codes'] }, { required: ['fundCodes'] }]
     },
     (args) => controlApi.queryFundEstimates(args || {})
+  );
+
+  const keywordSearchSchema = {
+    type: 'object',
+    description:
+      'keyword 与 q 等价，至少填一个（插件会合并为网关 keyword）。可选 limit（条数）。返回 finance.table.result，行在 data[]。',
+    additionalProperties: true,
+    properties: {
+      keyword: { type: 'string', description: '搜索词：名称或代码片段，优先使用' },
+      q: { type: 'string', description: '与 keyword 二选一' },
+      limit: { type: 'number', description: '最大行数，默认由网关决定' }
+    },
+    anyOf: [{ required: ['keyword'] }, { required: ['q'] }]
+  };
+
+  tryRegisterTool(
+    registerTool,
+    'watch_search_a_stock_basic',
+    '【A 股基础信息】按名称/代码找 ts_code、简称、行业等（日终/静态库表）。' +
+      'When: 用户只说中文名或模糊代码、要映射到 600000.SH 再查 watch_query_ticker。' +
+      'Returns: finance.table.result，data[] 每行含 ts_code 等字段。',
+    keywordSearchSchema,
+    (args) => controlApi.searchAStockBasic(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_search_hk_stock_basic',
+    '【港股基础信息】名称/拼音/代码检索港股代码。' +
+      'When: 港股名称→代码后再 watch_query_ticker(market=hk)。' +
+      'Returns: finance.table.result。',
+    keywordSearchSchema,
+    (args) => controlApi.searchHkStockBasic(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_search_index_basic',
+    '【指数基础信息】按简称/ts_code 找指数。' +
+      'When: 用户说「沪深300」「恒生指数」等需解析为指数代码再 watch_query_ticker。' +
+      'Returns: finance.table.result。',
+    keywordSearchSchema,
+    (args) => controlApi.searchIndexBasic(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_search_fund_basic',
+    '【基金档案】按 ts_code 或名称查基金元数据（非估值）。' +
+      'When: 确认基金代码、或名称反查 000xxx.OF；查当日估算涨跌用 watch_query_fund_estimates。' +
+      'Returns: finance.table.result。',
+    {
+      type: 'object',
+      description: 'ts_code 精确查优先；否则 keyword 或 q 模糊查。可选 limit。',
+      additionalProperties: true,
+      properties: {
+        ts_code: { type: 'string', description: '基金代码如 000006.OF' },
+        tsCode: { type: 'string', description: 'camelCase 别名' },
+        keyword: { type: 'string', description: '基金名称关键词' },
+        q: { type: 'string', description: '同 keyword' },
+        limit: { type: 'number' }
+      },
+      anyOf: [
+        { required: ['ts_code'] },
+        { required: ['tsCode'] },
+        { required: ['keyword'] },
+        { required: ['q'] }
+      ]
+    },
+    (args) => controlApi.searchFundBasic(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_fin_news',
+    '【财经快讯】标题/摘要类新闻，非实时逐笔。' +
+      'When: 用户问「有什么新闻、快讯」并给出主题词。' +
+      'Returns: finance.table.result；可选 pub_time_start/pub_time_end 收窄时间。' +
+      'Do NOT: 与行情混淆；无关键词时先追问。',
+    {
+      ...keywordSearchSchema,
+      properties: {
+        ...keywordSearchSchema.properties,
+        pub_time_start: { type: 'string', description: '可选，发布时间下界，如 YYYY-MM-DD HH:MM:SS' },
+        pub_time_end: { type: 'string', description: '可选，发布时间上界' }
+      }
+    },
+    (args) => controlApi.queryFinNews(args || {})
+  );
+
+  tryRegisterTool(
+    registerTool,
+    'watch_trade_calendar',
+    '【交易日历】某日是否开市、上一交易日等，无价量。' +
+      'When: 「今天A股开不开盘」「五一休市吗」等；A 股常用 exchange=SSE（沪）或 SZSE（深），可各查一次或问用户。' +
+      'Returns: finance.table.result，行内 is_open 等字段依网关。' +
+      'Required: exchange + start_date + end_date（YYYY-MM-DD）；可用 startDate/endDate。',
+    {
+      type: 'object',
+      description: '区间宜覆盖所问日期；单日则 start=end。',
+      additionalProperties: true,
+      properties: {
+        exchange: {
+          type: 'string',
+          description: '交易所代码，如 SSE（上交所）、SZSE（深交所），与网关文档一致'
+        },
+        start_date: { type: 'string', description: '区间起点 YYYY-MM-DD' },
+        end_date: { type: 'string', description: '区间终点 YYYY-MM-DD' },
+        startDate: { type: 'string', description: 'camelCase，同 start_date' },
+        endDate: { type: 'string', description: 'camelCase，同 end_date' }
+      },
+      required: ['exchange']
+    },
+    (args) => controlApi.queryTradeCalendar(args || {})
   );
 
   tryRegisterTool(

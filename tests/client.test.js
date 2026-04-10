@@ -110,6 +110,40 @@ test('queryFundEstimates sends fund.estimates request', async () => {
   await client.close();
 });
 
+test('queryFinanceTable sends finance.table request', async () => {
+  const client = buildClient({ enqueueIfDisconnected: true });
+  const sent = [];
+  client.connected = true;
+  client.ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw))
+  };
+
+  const p = client.queryFinanceTable({
+    path: '/v1/a-stock/basic/search',
+    query: { keyword: '银行', limit: 5 }
+  });
+  const req = sent[0];
+  assert.equal(req.type, 'finance.table');
+  assert.equal(req.payload.path, '/v1/a-stock/basic/search');
+  assert.equal(req.payload.query.keyword, '银行');
+
+  client._onMessage(
+    JSON.stringify({
+      request_id: req.request_id,
+      type: 'finance.table.result',
+      success: true,
+      http_status: 200,
+      path: '/v1/a-stock/basic/search',
+      data: []
+    })
+  );
+  const resp = await p;
+  assert.equal(resp.success, true);
+  assert.equal(resp.http_status, 200);
+  await client.close();
+});
+
 test('listWatches sends watch.list request', async () => {
   const client = buildClient({ enqueueIfDisconnected: true });
   const sent = [];

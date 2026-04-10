@@ -57,6 +57,12 @@ test('plugin register exposes control api and tool registrations', async () => {
 
     assert.equal(typeof api.glanceBridge?.queryTickerData, 'function');
     assert.equal(typeof api.glanceBridge?.queryFundEstimates, 'function');
+    assert.equal(typeof api.glanceBridge?.searchAStockBasic, 'function');
+    assert.equal(typeof api.glanceBridge?.searchHkStockBasic, 'function');
+    assert.equal(typeof api.glanceBridge?.searchIndexBasic, 'function');
+    assert.equal(typeof api.glanceBridge?.searchFundBasic, 'function');
+    assert.equal(typeof api.glanceBridge?.queryFinNews, 'function');
+    assert.equal(typeof api.glanceBridge?.queryTradeCalendar, 'function');
     assert.equal(typeof api.glanceBridge?.createWatch, 'function');
     assert.equal(typeof api.glanceBridge?.sendNotification, 'function');
     assert.equal(typeof api.glanceBridge?.sendSms, 'function');
@@ -84,6 +90,16 @@ test('plugin register exposes control api and tool registrations', async () => {
     await api.glanceBridge.deleteWatch('s-1');
     await api.glanceBridge.listWatches({ status: 'active' });
     await api.glanceBridge.queryFundEstimates({ fund_codes: '000006.OF' });
+    await api.glanceBridge.searchAStockBasic({ keyword: 'ping' });
+    await api.glanceBridge.searchHkStockBasic({ q: '700' });
+    await api.glanceBridge.searchIndexBasic({ keyword: 'hsi' });
+    await api.glanceBridge.searchFundBasic({ ts_code: '000006.OF' });
+    await api.glanceBridge.queryFinNews({ keyword: '利率' });
+    await api.glanceBridge.queryTradeCalendar({
+      exchange: 'SSE',
+      start_date: '2026-04-01',
+      end_date: '2026-04-30'
+    });
 
     assert.deepEqual(tools.sort(), [
       'notify_call',
@@ -92,11 +108,17 @@ test('plugin register exposes control api and tool registrations', async () => {
       'notify_sms',
       'watch_activate',
       'watch_create',
+      'watch_fin_news',
       'watch_list',
       'watch_pause',
       'watch_query_fund_estimates',
       'watch_query_ticker',
-      'watch_remove'
+      'watch_remove',
+      'watch_search_a_stock_basic',
+      'watch_search_fund_basic',
+      'watch_search_hk_stock_basic',
+      'watch_search_index_basic',
+      'watch_trade_calendar'
     ]);
 
     assert.equal(requests[0].type, 'ticker.query');
@@ -121,6 +143,15 @@ test('plugin register exposes control api and tool registrations', async () => {
     assert.equal(requests[10].payload.status, 'active');
     assert.equal(requests[11].type, 'fund.estimates');
     assert.equal(requests[11].payload.fund_codes, '000006.OF');
+    assert.equal(requests[12].type, 'finance.table');
+    assert.equal(requests[12].payload.path, '/v1/a-stock/basic/search');
+    assert.equal(requests[12].payload.query.keyword, 'ping');
+    assert.equal(requests[13].payload.path, '/v1/hk-stock/basic/search');
+    assert.equal(requests[14].payload.path, '/v1/index/basic/search');
+    assert.equal(requests[15].payload.path, '/v1/fund/basic');
+    assert.equal(requests[16].payload.path, '/v1/news');
+    assert.equal(requests[17].payload.path, '/v1/trade-calendar');
+    assert.equal(requests[17].payload.query.exchange, 'SSE');
     assert.equal(infoLogs.some((line) => line.includes('lockDir=') && line.includes(lockDir)), true);
   } finally {
     await stopPluginRuntime();

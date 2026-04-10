@@ -23,7 +23,7 @@
 ## 功能
 
 - 与 `openclaw-bridge` 建立 WebSocket 长连接
-- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `fund.estimates` / `notify.send` / `ping`
+- 支持请求：`watch.create` / `watch.activate` / `watch.pause` / `watch.delete` / `ticker.query` / `fund.estimates` / `finance.table`（网关白名单只读表：A 股/港股/指数/基金基础检索、快讯、交易日历）/ `notify.send` / `ping`
 - 支持渠道：`openclaw` / `email` / `call` / `sms` / `dingtalk`
   - 建议在 `channel_configs.openclaw` 中携带路由字段（如 `channel`、`session_key`、`account_id`、`conversation_id`），便于触发后回推到正确会话
 - 订阅推送：`watch.triggered`
@@ -32,6 +32,7 @@
 - 严格单活（同 token 只允许一个活跃进程）
 - 断线请求排队（可配置），重连后自动冲刷
 - 提供业务适配层 `OpenClawPluginAdapter`
+- Agent 友好：行情 `market` 支持中文别名（A股→a 等）；检索/新闻统一 `keyword`/`q`；交易日历支持 `startDate`/`endDate`；缺参时抛出明确英文错误便于模型自纠
 
 ## 安装
 

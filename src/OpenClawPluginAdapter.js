@@ -1,3 +1,9 @@
+import {
+  normalizeFundBasicTableQuery,
+  normalizeKeywordTableQuery,
+  normalizeTickerQuery,
+  normalizeTradeCalendarQuery
+} from './agentQueryNormalize.js';
 import { OpenClawBridgeClient } from './OpenClawBridgeClient.js';
 import { extractOpenclawRoutingFromRecord } from './openclawRouting.js';
 
@@ -137,11 +143,11 @@ export class OpenClawPluginAdapter {
    * 查询标的实时行情；参数为 market / symbol / segment，与网关 quote 接口一致；应答为 ticker.query.result。
    */
   async queryTickerData(query) {
-    const market = query?.market == null ? '' : String(query.market).trim();
-    const symbol = query?.symbol == null ? '' : String(query.symbol).trim();
-    const payload = { market, symbol };
-    if (query?.segment != null && String(query.segment).trim() !== '') {
-      payload.segment = String(query.segment).trim();
+    const payload = normalizeTickerQuery(query || {});
+    if (!payload.market || !payload.symbol) {
+      throw new Error(
+        'queryTickerData requires market and symbol. If user gave a name only, use search*Basic first.'
+      );
     }
     return this.client.queryTickerData(payload);
   }
@@ -162,6 +168,54 @@ export class OpenClawPluginAdapter {
       throw new Error('fund_codes must be a string or string[]');
     }
     return this.client.queryFundEstimates({ fund_codes: fundCodes });
+  }
+
+  async searchAStockBasic(query) {
+    const q = normalizeKeywordTableQuery(query, 'searchAStockBasic');
+    return this.client.queryFinanceTable({
+      path: '/v1/a-stock/basic/search',
+      query: q
+    });
+  }
+
+  async searchHkStockBasic(query) {
+    const q = normalizeKeywordTableQuery(query, 'searchHkStockBasic');
+    return this.client.queryFinanceTable({
+      path: '/v1/hk-stock/basic/search',
+      query: q
+    });
+  }
+
+  async searchIndexBasic(query) {
+    const q = normalizeKeywordTableQuery(query, 'searchIndexBasic');
+    return this.client.queryFinanceTable({
+      path: '/v1/index/basic/search',
+      query: q
+    });
+  }
+
+  async searchFundBasic(query) {
+    const q = normalizeFundBasicTableQuery(query);
+    return this.client.queryFinanceTable({
+      path: '/v1/fund/basic',
+      query: q
+    });
+  }
+
+  async queryFinNews(query) {
+    const q = normalizeKeywordTableQuery(query, 'queryFinNews');
+    return this.client.queryFinanceTable({
+      path: '/v1/news',
+      query: q
+    });
+  }
+
+  async queryTradeCalendar(query) {
+    const q = normalizeTradeCalendarQuery(query);
+    return this.client.queryFinanceTable({
+      path: '/v1/trade-calendar',
+      query: q
+    });
   }
 
   async pause(strategyId) {

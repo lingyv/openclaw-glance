@@ -50,6 +50,11 @@ class FakeClient {
     return { ok: true, payload };
   }
 
+  async queryFinanceTable(payload) {
+    this.calls.push(['queryFinanceTable', payload]);
+    return { ok: true, payload };
+  }
+
   async listWatches(payload) {
     this.calls.push(['listWatches', payload]);
     return { ok: true, payload };
@@ -204,6 +209,44 @@ test('adapter queryTickerData maps payload fields', async () => {
   assert.equal(payload.symbol, 'BTCUSDT');
 });
 
+test('adapter queryTickerData maps Chinese market alias to gateway code', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.queryTickerData({ market: 'A股', symbol: '600000.SH' });
+  const call = fake.calls.find((item) => item[0] === 'queryTickerData');
+  assert.ok(call);
+  assert.equal(call[1].market, 'a');
+});
+
+test('adapter queryTickerData rejects missing symbol', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+  await assert.rejects(() => adapter.queryTickerData({ market: 'hk' }), /market and symbol/);
+});
+
+test('adapter searchAStockBasic rejects empty keyword', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+  await assert.rejects(() => adapter.searchAStockBasic({}), /keyword or q/);
+});
+
+test('adapter queryTradeCalendar merges camelCase dates', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.queryTradeCalendar({
+    exchange: 'SSE',
+    startDate: '2026-04-01',
+    endDate: '2026-04-10'
+  });
+  const call = fake.calls.find((item) => item[0] === 'queryFinanceTable');
+  assert.ok(call);
+  assert.equal(call[1].query.exchange, 'SSE');
+  assert.equal(call[1].query.start_date, '2026-04-01');
+  assert.equal(call[1].query.end_date, '2026-04-10');
+});
+
 test('adapter queryFundEstimates maps fund_codes and fundCodes', async () => {
   const fake = new FakeClient();
   const adapter = new OpenClawPluginAdapter(fake);
@@ -218,6 +261,17 @@ test('adapter queryFundEstimates maps fund_codes and fundCodes', async () => {
   call = fake.calls.find((item) => item[0] === 'queryFundEstimates');
   assert.ok(call);
   assert.deepEqual(call[1].fund_codes, ['000006.OF', '110011.OF']);
+});
+
+test('adapter searchAStockBasic uses finance.table path', async () => {
+  const fake = new FakeClient();
+  const adapter = new OpenClawPluginAdapter(fake);
+
+  await adapter.searchAStockBasic({ keyword: '招行' });
+  const call = fake.calls.find((item) => item[0] === 'queryFinanceTable');
+  assert.ok(call);
+  assert.equal(call[1].path, '/v1/a-stock/basic/search');
+  assert.equal(call[1].query.keyword, '招行');
 });
 
 test('adapter listWatches delegates to client', async () => {
