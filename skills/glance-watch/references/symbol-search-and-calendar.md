@@ -16,7 +16,6 @@ CSV 映射：
 - `stock_hk.csv` -> `product_type=hk_stock`
 - `index_a.csv` -> `product_type=index`
 - `index_hk.csv` -> `product_type=index`
-- 基金 `xxxxxx.OF` -> 仅估值/基础信息，不创建策略
 
 ### 本地 CSV 匹配算法（执行约束）
 
@@ -34,7 +33,6 @@ CSV 映射：
 - `watch_search_a_stock_basic`（A股）
 - `watch_search_hk_stock_basic`（港股）
 - `watch_search_index_basic`（指数）
-- `watch_search_fund_basic`（基金基础信息）
 
 统一规则：
 - 名称检索至少给 `keyword` 或 `q`
@@ -46,7 +44,6 @@ CSV 映射：
 await watch_search_a_stock_basic({ keyword: '平安银行', limit: 5 })
 await watch_search_hk_stock_basic({ q: '腾讯' })
 await watch_search_index_basic({ keyword: '沪深300' })
-await watch_search_fund_basic({ ts_code: '000006.OF' })
 ```
 
 ## 3) 交易日查询：`watch_trade_calendar`

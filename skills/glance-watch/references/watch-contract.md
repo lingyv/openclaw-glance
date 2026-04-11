@@ -11,8 +11,6 @@
 ## 0. 产品边界
 
 - 支持盯盘：`stock` / `hk_stock` / `index` / `crypto`
-- 不支持盯盘：基金（`product_type=fund` 或代码形如 `xxxxxx.OF`）
-- 基金相关请改用：`watch_query_fund_estimates` / `watch_search_fund_basic`
 
 ## 1. `watch_create`
 
@@ -98,7 +96,6 @@ OpenClaw 路由约束（当 `channels` 包含 `openclaw`）：
 - 顶层放 `condition`
 - `channel_configs.*` 传 JSON 字符串
 - 用户明确“仅/只用某几个渠道”时仍强行附加渠道
-- 基金标的调用 `watch_create`
 
 ## 联系人 CSV（创建策略场景必遵守）
 

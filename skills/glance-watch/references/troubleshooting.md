@@ -13,7 +13,7 @@
 - 若报“未注册的算子类型”，将 `operator_type` 修正为 `rule` 后重试。
 - 若报 `UNSUPPORTED_PRODUCT_TYPE`，说明命中了基金边界（如 `fund` 或 `000006.OF`）：
   - 不再重试 `watch_create`
-  - 改用 `watch_query_fund_estimates` 或 `watch_search_fund_basic`
+  - 直接告知“当前 OpenClaw 暂不提供基金能力”
 
 ## 通知失败（`notify_*`）
 

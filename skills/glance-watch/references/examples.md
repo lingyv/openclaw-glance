@@ -112,13 +112,6 @@ await watch_query_ticker({ market: 'hk', symbol: '00700', segment: 'stock' })
 await watch_query_ticker({ market: 'crypto', symbol: 'BTCUSDT' })
 ```
 
-### 3.2 基金当日估值（基金不支持创建盯盘）
-
-```javascript
-await watch_query_fund_estimates({ fund_codes: '000006.OF' })
-await watch_query_fund_estimates({ fund_codes: ['000006.OF', '110011.OF'] })
-```
-
 ## 4) 标的检索与是否交易日查询
 
 ### 4.1 名称 -> 代码
@@ -127,7 +120,6 @@ await watch_query_fund_estimates({ fund_codes: ['000006.OF', '110011.OF'] })
 await watch_search_a_stock_basic({ keyword: '平安银行', limit: 5 })
 await watch_search_hk_stock_basic({ q: '腾讯', limit: 5 })
 await watch_search_index_basic({ keyword: '沪深300', limit: 5 })
-await watch_search_fund_basic({ keyword: '西部利得量化成长', limit: 5 })
 ```
 
 ### 4.2 是否交易日
@@ -154,6 +146,5 @@ await watch_fin_news({
 
 ## 常见边界提示
 
-- 基金（`xxxxxx.OF`）不能用 `watch_create`，只能用 `watch_query_fund_estimates` / `watch_search_fund_basic`。
 - 使用 `call/sms/email/dingtalk` 时，`watch_create` 与 `notify_*` 都要先查联系人 CSV。
 - `operator_type` 固定 `rule`，不要用其他值。
