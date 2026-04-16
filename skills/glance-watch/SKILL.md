@@ -69,6 +69,7 @@ P3 辅助能力：
 - `operator_type`（固定 `rule`）
 - `operator_parameters.condition`
 - `operator_parameters.variables`
+- `operator_parameters` 详细填写规则见 `references/watch-contract.md` 的「operator_parameters 填写说明」
 
 缺任一项先追问，不猜测阈值。
 

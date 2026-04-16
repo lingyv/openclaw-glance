@@ -25,6 +25,38 @@
 - `channels`（至少 1 个渠道；是否包含 `openclaw` 见下方渠道规则）
 - `channel_configs`
 
+### operator_parameters 填写说明
+
+字段定义：
+- `operator_parameters.condition`：触发条件表达式（字符串，必填）
+- `operator_parameters.variables`：条件表达式里引用的变量（对象，建议必填）
+- `operator_parameters.message_template`：触发提示文案模板（字符串，建议填写）
+- `operator_parameters.symbols`：多标的策略的别名映射（对象，可选）
+
+表达式支持：
+- 比较：`<`, `<=`, `>`, `>=`, `==`, `!=`
+- 逻辑：`and`, `or`
+- 可用行情字段：`price`, `volume`, `change_percent`
+- A股/港股额外可用：`turnover_rate`
+- `crypto` 不要使用 `turnover_rate`
+
+填写规则（创建策略时直接套用）：
+- `condition` 只引用“行情字段 + variables 里的变量名”，不要写未定义变量。
+- `variables` 键名必须和 `condition` 中引用一致（如 `threshold/tr_threshold/cp_threshold`）。
+- `message_template` 推荐复用 `variables` 里的键位占位：`{product_name} ... {threshold}`。
+- 文案优先放在 `message_template`，渠道内 `content/condition` 仅在用户明确要求时再覆盖。
+
+常用模板（按市场）：
+- A股/港股个股：
+  `condition: "price >= threshold and turnover_rate >= tr_threshold"`
+  `variables: { "threshold": 12.5, "tr_threshold": 0.01, "product_name": "平安银行" }`
+- 指数：
+  `condition: "price <= threshold"`
+  `variables: { "threshold": 3500, "product_name": "沪深300" }`
+- 加密：
+  `condition: "price >= threshold and change_percent >= cp_threshold"`
+  `variables: { "threshold": 70000, "cp_threshold": 0.02, "product_name": "Bitcoin" }`
+
 渠道规则：
 - 用户明确“仅/只用某几个渠道”时：严格按用户指定，可不含 `openclaw`。
 - 用户只说“用某个渠道/某几个渠道”但未强调“仅限”时：默认补 `openclaw`。
@@ -52,7 +84,8 @@ OpenClaw 路由约束（当 `channels` 包含 `openclaw`）：
     variables: {
       cp_threshold: -0.02,
       product_name: '比特币'
-    }
+    },
+    message_template: '{product_name} 跌幅达到 {cp_threshold}，当前价格 {price}'
   },
   channels: ['openclaw', 'dingtalk', 'sms'],
   channel_configs: {
@@ -155,9 +188,10 @@ rg -n '^sms,jinguo\.xie,' ~/.openclaw/workspace/memory/watch-notify-contacts.csv
 1. 字段名使用 snake_case：`product_code/product_type/operator_type/operator_parameters/channels/channel_configs`
 2. `operator_type` 固定为 `rule`
 3. `operator_parameters.condition` 与 `operator_parameters.variables` 同时存在
-4. `channels` 至少一个，且与 `channel_configs` 对应
-5. 渠道配置必须是对象，不能是 JSON 字符串
-6. 不手动传 `request_id`
+4. `message_template` 建议填写，且占位符与变量名一致
+5. `channels` 至少一个，且与 `channel_configs` 对应
+6. 渠道配置必须是对象，不能是 JSON 字符串
+7. 不手动传 `request_id`
 
 ## 4. 买卖意图与条件方向
 
