@@ -40,6 +40,12 @@
 - A股/港股额外可用：`turnover_rate`
 - `crypto` 不要使用 `turnover_rate`
 
+字段含义（其中 `volume` / `change_percent` / `turnover_rate` 都是日内指标）：
+- `price`：最新成交价。
+- `volume`：当日累计成交量（日内）。
+- `change_percent`：当日涨跌幅（日内，小数表示；如 2% 写 `0.02`，-2% 写 `-0.02`）。
+- `turnover_rate`：当日换手率（日内，小数表示；如 1% 写 `0.01`，仅 A股/港股可用）。
+
 填写规则（创建策略时直接套用）：
 - `condition` 只引用“行情字段 + variables 里的变量名”，不要写未定义变量。
 - `variables` 键名必须和 `condition` 中引用一致（如 `threshold/tr_threshold/cp_threshold`）。
